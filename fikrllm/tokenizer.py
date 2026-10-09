@@ -37,9 +37,21 @@ class Tokenizer:
                 f"No tokenizer at {path}."
             )
 
-        return cls(
-            BackingTokenizer.from_file( str(path) )
-        )
+        backing_tokenizer = BackingTokenizer.from_file(str(path))
+        vocab = backing_tokenizer.get_vocab()
+        mismatches = {
+            token: (expected_id, vocab.get(token))
+            for token, expected_id in cls._SPECIAL_TOKENS.items()
+            if vocab.get(token) != expected_id
+        }
+        if mismatches:
+            details = ", ".join(
+                f"{token}: expected {expected}, got {actual}"
+                for token, (expected, actual) in mismatches.items()
+            )
+            raise ValueError(f"Tokenizer special-token IDs do not match: {details}")
+
+        return cls(backing_tokenizer)
 
 
     def normalize(self, text: str) -> str:
@@ -57,7 +69,7 @@ class Tokenizer:
             encoding.ids
             for encoding in encodings
         ]
-    
+
     def tokenize(self, text: str, add_special_tokens: bool = False) -> list[str]:
         return self._tokenizer.encode(text, add_special_tokens=add_special_tokens).tokens
 
@@ -67,4 +79,3 @@ class Tokenizer:
     @property
     def vocab_size(self) -> int:
         return self._tokenizer.get_vocab_size()
-    

@@ -47,6 +47,7 @@ Output (to output/): train.bin, eval.bin, meta.json
 """
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -56,7 +57,9 @@ import pandas as pd
 from huggingface_hub import snapshot_download
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from fikrllm.tokenizer import Tokenizer
+from fikrllm.tokenizer import DEFAULT_TOKENIZER_PATH, Tokenizer
+
+from cleaning import clean_dataframe
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
@@ -82,7 +85,9 @@ def pack_split(shards, tokenizer, out_path):
     # so peak memory is one shard rather than one corpus.
     with open(out_path, "wb") as handle:
         for i, shard in enumerate(shards, 1):
-            texts = (pd.read_parquet(shard, columns=["text"])["text"]
+            raw = pd.read_parquet(shard, columns=["text"])
+            cleaned = clean_dataframe(raw)
+            texts = (cleaned["text"]
                      .sample(frac=1.0, random_state=SHUFFLE_SEED + i).tolist())
 
             # [BOS] ... [EOS] per document, before concatenation: the seam is
@@ -96,7 +101,9 @@ def pack_split(shards, tokenizer, out_path):
             np.asarray(stream, dtype=DTYPE).tofile(handle)
             total_tokens += len(stream)
             total_docs += len(texts)
-            print(f"  [{i}/{len(shards)}] {shard.name}: {len(texts):,} docs, "
+            dropped = len(raw) - len(cleaned)
+            print(f"  [{i}/{len(shards)}] {shard.name}: {len(texts):,} docs "
+                  f"({dropped:,} dropped by cleaning), "
                   f"{total_tokens / 1e6:,.1f}M tokens")
 
     return {"documents": total_docs, "tokens": total_tokens}
@@ -132,8 +139,12 @@ def main():
     # Provenance: how a checkpoint can say which corpus it was trained on.
     (args.out_dir / "meta.json").write_text(json.dumps({
         "repo": REPO,
+        "cleaning": "Type A prepare_document + tokenizer Type B normalizer",
         "dtype": DTYPE.__name__,
         "vocab_size": tokenizer.vocab_size,
+        "tokenizer_sha256": hashlib.sha256(
+            DEFAULT_TOKENIZER_PATH.read_bytes()
+        ).hexdigest(),
         "shuffle_seed": SHUFFLE_SEED,
         "train": train,
         "eval": evaluation,

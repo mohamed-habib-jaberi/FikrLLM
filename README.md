@@ -106,7 +106,7 @@ python scripts/ch03-build-tokenizer/01_clean_corpus.py \
 
 `--max-shards 1` et `--tokenizer-docs 1000` sont adaptés aux tests; les valeurs par défaut téléchargent plusieurs Go et ciblent 400 000 documents.
 
-> Important : dans l'état actuel, `03_pack_corpus.py` retélécharge les shards `pretrain` et les tokenise directement. Le nettoyage Type A est donc utilisé pour le corpus du tokenizer, mais pas explicitement pour les textes de `train.bin`/`eval.bin`. La normalisation Type B reste appliquée. Pour entraîner GPT sur le corpus Type A nettoyé, il faut modifier le packing pour lire les Parquet nettoyés et régénérer les binaires.
+`03_pack_corpus.py` applique le même nettoyage Type A à chaque shard avant la tokenisation. La normalisation Type B reste ensuite appliquée automatiquement par le tokenizer. Le fichier `meta.json` conserve aussi le hash SHA-256 du tokenizer, ce qui permet de vérifier précisément avec quel vocabulaire les binaires ont été construits.
 
 ---
 
@@ -129,7 +129,7 @@ python scripts/ch03-build-tokenizer/02_build_tokenizer.py
 | `[AR]` / `[EN]` | 5 / 6 | marqueurs de langue disponibles |
 | `[SYS]`, `[USER]`, `[ASST]` | 7 / 8 / 9 | rôles conversationnels |
 
-Le script produit son fichier dans le dossier du script, alors que `Tokenizer.from_file()` recherche par défaut `fikrllm/assets/tokenizer.json`. Vérifie donc que le tokenizer nouvellement entraîné est placé à cet emplacement avant le packing et l'entraînement.
+Le script sauvegarde directement le tokenizer officiel dans `fikrllm/assets/tokenizer.json`. Le packing, les notebooks et l'entraînement chargent tous ce même fichier afin d'éviter toute divergence d'IDs.
 
 ### `fikrllm/tokenizer.py`
 
@@ -345,7 +345,6 @@ python -m pip install -e .
 
 python scripts/ch03-build-tokenizer/01_clean_corpus.py --max-shards 1 --tokenizer-docs 1000
 python scripts/ch03-build-tokenizer/02_build_tokenizer.py
-# placer tokenizer.json généré dans fikrllm/assets/
 python scripts/ch03-build-tokenizer/03_pack_corpus.py --max-shards 1
 
 python run_pretrain.py --tiny --steps 10 --warmup 2 --limit 100 --eval-limit 20 \

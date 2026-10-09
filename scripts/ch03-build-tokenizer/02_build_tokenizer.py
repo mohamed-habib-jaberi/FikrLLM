@@ -17,11 +17,12 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 # ============================================================
 
 CURRENT_WD = Path(__file__).parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 CLEAN_PATHS = [
     CURRENT_WD / "output" / "tokenizer_corpus.parquet",
 ]
 
-OUTPUT_PATH = CURRENT_WD / "tokenizer.json"
+OUTPUT_PATH = REPO_ROOT / "fikrllm" / "assets" / "tokenizer.json"
 
 VOCAB_SIZE = 32_000
 MIN_FREQUENCY = 2
@@ -110,10 +111,11 @@ def main():
 
         print("="*30)
 
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     tokenizer.save(str(OUTPUT_PATH))
+    print(f"saved tokenizer: {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     main()        
         
-
 
