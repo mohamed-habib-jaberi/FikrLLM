@@ -146,6 +146,8 @@ texte = tok.decode(ids)
 
 `from_file()` vérifie le fichier, laisse la bibliothèque Hugging Face reconstruire le tokenizer BPE, puis renvoie l'objet FikrLLM. Cet objet expose aussi `tok.BOS`, `tok.EOS`, `tok.USER` et `tok.ASST`; ainsi les autres modules ne recopient jamais les IDs spéciaux à la main.
 
+Le notebook `fikrllm/assets/notebooks/tokenizer_embeddings.ipynb` sert de banc de test interactif pour `fikrllm/tokenizer.py`. Il permet de vérifier le chargement de `tokenizer.json`, la normalisation arabe–anglaise, la tokenisation, l'encodage, le décodage et la transformation des IDs en embeddings, sans lancer un entraînement complet.
+
 ---
 
 ## 3. Packing : construire un dataset performant
