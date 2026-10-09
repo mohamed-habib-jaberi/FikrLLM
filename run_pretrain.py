@@ -11,6 +11,7 @@ run_pretrain.py -- train the model on the packed corpus
 import argparse
 import random
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
 import torch
@@ -31,7 +32,8 @@ from fikrllm.config import steps_for_epochs, unique_run_name
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-PACKED_DIR = Path("scripts/ch03-build-tokenizer/output")
+REPO_ROOT = Path(__file__).resolve().parent
+PACKED_DIR = REPO_ROOT / "scripts" / "ch03-build-tokenizer" / "output"
 
 def _make_loader(dataset, training_config, model_config,
                   use_shuffle: bool=True, shuffle_seed: int=42):
@@ -156,6 +158,9 @@ def main():
         if value is not None:
             setattr(training_config, name, value)
 
+    if args.sample_prompts:
+        training_config.sample_prompts = tuple(args.sample_prompts)
+
     print("loading tokenizer")
     tokenizer = Tokenizer.from_file()
 
@@ -199,9 +204,13 @@ def main():
 
     final = None
 
-    with Tracker(
-        training_config=training_config, model_config=model_config
-        ) as tracker:
+    tracker_context = (
+        nullcontext(None)
+        if args.no_tracking
+        else Tracker(training_config=training_config, model_config=model_config)
+    )
+
+    with tracker_context as tracker:
 
         trainer = Trainer(
             model=model,

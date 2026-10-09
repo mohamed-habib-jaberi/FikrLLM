@@ -28,8 +28,10 @@ from fikrllm import (
 from fikrllm.config import steps_for_epochs, unique_run_name
 from fikrllm.training import load_checkpoint, model_config_from_checkpoint
 
-FT_TRAIN = "scripts/ch03-build-tokenizer/output/ft_train_filtered.parquet"
-FT_EVAL = "scripts/ch03-build-tokenizer/output/ft_eval_filtered.parquet"
+REPO_ROOT = Path(__file__).resolve().parent
+FT_OUTPUT = REPO_ROOT / "scripts" / "ch03-build-tokenizer" / "output"
+FT_TRAIN = FT_OUTPUT / "ft_train_filtered.parquet"
+FT_EVAL = FT_OUTPUT / "ft_eval_filtered.parquet"
 
 FT_SAMPLE_PROMPTS = (
     # --- Arabic ---
@@ -176,7 +178,7 @@ def main():
         if value is not None:
             setattr(training_config, name, value)
 
-    training_config.sample_prompts = FT_SAMPLE_PROMPTS
+    training_config.sample_prompts = tuple(args.sample_prompts or FT_SAMPLE_PROMPTS)
     training_config.sample_chat = True
 
     print("loading tokenizer")
@@ -233,6 +235,7 @@ def main():
         trainer = Trainer(
             model=model, train_loader=train_loader, eval_loader=eval_loader,
             config=training_config, tracker=tracker, tokenizer=tokenizer,
+            device=args.device,
         )
 
         trainer.train()
