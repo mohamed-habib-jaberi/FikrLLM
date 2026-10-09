@@ -125,7 +125,6 @@ import threading
 import time
 import random
 import urllib.parse
-from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Lock
@@ -181,8 +180,8 @@ _AR_LOW_VALUE_RE = re.compile(
 
 # Wikimedia requires a descriptive UA with contact info.
 USER_AGENT = (
-    "JabartiBilingualCollector/1.0 "
-    "(https://github.com/bakrianoo/jabarti-llm-from-scratch; "
+    "FikrLLMBilingualCollector/1.0 "
+    "(https://github.com/mohamed-habib-jaberi/FikrLLM; "
     "educational NLP course project) "
     "python-requests"
 )
@@ -1160,7 +1159,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=_DATA_DIR,
         help="Directory to write the augmentation JSONL files "
-             f"(default: same as --data-dir)",
+             "(default: same as --data-dir)",
     )
     p.add_argument(
         "--figures-source",

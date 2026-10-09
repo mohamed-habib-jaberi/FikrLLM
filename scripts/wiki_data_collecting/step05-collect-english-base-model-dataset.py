@@ -66,7 +66,6 @@ Usage
 
 import argparse
 import json
-import os
 import random
 import re
 import time
@@ -90,8 +89,8 @@ EN_API_URL = "https://en.wikipedia.org/w/api.php"
 
 # Wikimedia requires a descriptive UA with contact info.
 USER_AGENT = (
-    "JabartiBilingualCollector/1.0 "
-    "(https://github.com/bakrianoo/jabarti-llm-from-scratch; "
+    "FikrLLMBilingualCollector/1.0 "
+    "(https://github.com/mohamed-habib-jaberi/FikrLLM; "
     "educational NLP course project) "
     "python-requests"
 )
@@ -218,7 +217,7 @@ def api_get(session: requests.Session,
         print(f"  [api] HTTP {r.status_code}; giving up: {r.text[:200]}")
         return None
 
-    print(f"  [api] exhausted retries")
+    print("  [api] exhausted retries")
     return None
 
 
@@ -273,7 +272,7 @@ def resolve_english_titles(session: requests.Session,
         }
         data = api_get(session, AR_API_URL, params)
         if data is None:
-            print(f"  [langlinks] batch failed permanently")
+            print("  [langlinks] batch failed permanently")
             continue
 
         # MediaWiki may rewrite titles via "normalized" / "redirects".
@@ -566,7 +565,6 @@ def process_phase1(input_path: Path,
 
     session = make_session()
     write_lock = Lock()
-    missing_lock = Lock()
     counters = {"saved": 0, "no_langlink": 0, "fetch_failed": 0,
                 "filtered": 0, "dup": 0}
 
@@ -770,7 +768,7 @@ def main():
         if not in_p.exists():
             print(f"[phase_1] input not found: {in_p} — skipping")
         else:
-            print(f"\n=== phase_1 (en) ===")
+            print("\n=== phase_1 (en) ===")
             process_phase1(in_p, out_p, args.workers, args.max_records)
 
     if args.phase in ("phase_2", "all"):
@@ -781,7 +779,7 @@ def main():
         if not in_p.exists():
             print(f"[phase_2] input not found: {in_p} — skipping")
         else:
-            print(f"\n=== phase_2 (en) ===")
+            print("\n=== phase_2 (en) ===")
             process_phase2(in_p, out_p, args.workers, args.max_records)
 
 

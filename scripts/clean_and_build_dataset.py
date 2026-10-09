@@ -91,7 +91,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Filtering thresholds  (override via CLI flags)
@@ -831,7 +830,7 @@ def main() -> None:
         ),
     )
     print(f"  Uploaded successfully → https://huggingface.co/datasets/{args.hub_repo}")
-    print(f"\nDone.")
+    print("\nDone.")
 
 
 if __name__ == "__main__":
