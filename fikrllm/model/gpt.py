@@ -10,7 +10,10 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
+from fikrllm.config import ModelConfig
+from fikrllm.model.attention import KVCache
 from fikrllm.model.block import TransformerBlock
 from fikrllm.model.embeddings import InputEmbedding
 
@@ -26,7 +29,7 @@ class GPT(nn.Module):
     Pass `targets` to also get the next-token loss.
     """
 
-    def __init__(self, config):
+    def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         self.config = config
 
@@ -46,7 +49,7 @@ class GPT(nn.Module):
         self._scale_residual_projections()
 
 
-    def _init_weights(self, module):
+    def _init_weights(self, module: nn.Module) -> None:
         """GPT-2's initialisation: normal(0, 0.02), zeroed biases.
 
         PyTorch's Linear default depends on fan-in, which leaves a 768-wide
@@ -62,7 +65,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def _scale_residual_projections(self):
+    def _scale_residual_projections(self) -> None:
         """Shrink the two projections that write into the residual stream.
 
         Every block adds twice into the residual stream, so with n_layers
@@ -77,7 +80,13 @@ class GPT(nn.Module):
                 block.attn.W_o.weight.div_(scale)
                 block.ffn.fc2.weight.div_(scale)
 
-    def forward(self, input_ids, targets=None, kv_cache=None, use_cache=False):
+    def forward(
+        self,
+        input_ids: Tensor,
+        targets: Tensor | None = None,
+        kv_cache: list[KVCache] | None = None,
+        use_cache: bool = False,
+    ) -> tuple[Tensor, Tensor | None, list[KVCache] | None]:
 
         # kv_caches      # a list: one entry per layer  → [cache_0, cache_1, ... cache_11]
         # kv_caches[0]   # layer 0's cache = a tuple (k, v)
@@ -93,7 +102,7 @@ class GPT(nn.Module):
         for ix, block in enumerate(self.blocks):
             current_cache = kv_cache[ix] if kv_cache is not None else None
             x, updated_cache = block(x, use_cache=use_cache, kv_cache=current_cache)
-            if use_cache:
+            if updated_caches is not None and updated_cache is not None:
                 updated_caches.append(updated_cache)
 
 
@@ -125,7 +134,5 @@ class GPT(nn.Module):
             total -= self.embedding.token_embedding.weight.numel()
 
         return total
-
-
 
 

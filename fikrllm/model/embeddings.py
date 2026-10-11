@@ -4,10 +4,14 @@ embeddings.py -- token IDs to the vectors the model actually reads
 
 import torch
 import torch.nn as nn
+from torch import Tensor
+
+from fikrllm.config import ModelConfig
+
 
 class InputEmbedding(nn.Module):
 
-    def __init__(self, config):
+    def __init__(self, config: ModelConfig) -> None:
 
         super().__init__()
         
@@ -24,7 +28,7 @@ class InputEmbedding(nn.Module):
 
 
 
-    def forward(self, input_ids, position_offset: int=0):
+    def forward(self, input_ids: Tensor, position_offset: int = 0) -> Tensor:
 
         _, seq_len = input_ids.shape
         if position_offset + seq_len > self.max_seq_len:
@@ -37,7 +41,7 @@ class InputEmbedding(nn.Module):
             position_offset, position_offset + seq_len, device=input_ids.device
         )
 
-        toekns = self.token_embedding(input_ids)
+        tokens = self.token_embedding(input_ids)
         pos = self.position_embedding(positions)
 
-        return self.dropout(toekns + pos) # (B, seq_length, d_model)
+        return self.dropout(tokens + pos)  # (B, seq_length, d_model)

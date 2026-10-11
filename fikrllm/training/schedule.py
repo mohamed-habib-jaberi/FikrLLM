@@ -6,8 +6,12 @@ import math
 
 import torch
 
+from fikrllm.config import TrainingConfig
 
-def cosine_with_warmup(optimizer, config):
+
+def cosine_with_warmup(
+    optimizer: torch.optim.Optimizer, config: TrainingConfig
+) -> torch.optim.lr_scheduler.LambdaLR:
     """Ramp up, then decay along a cosine curve.
 
     Two problems, one schedule:
@@ -26,7 +30,7 @@ def cosine_with_warmup(optimizer, config):
     was built with.
     """
 
-    def scale_for_step(step):
+    def scale_for_step(step: int) -> float:
         
         # === warmup
         if step < config.warmup_steps:

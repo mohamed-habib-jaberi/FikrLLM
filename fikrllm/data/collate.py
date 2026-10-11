@@ -3,9 +3,12 @@ collate.py -- examples into batches
 """
 
 import torch
+from torch import Tensor
 
 
-def collate_fn(examples, pad_id=0):
+def collate_fn(
+    examples: list[dict[str, Tensor]], pad_id: int = 0
+) -> dict[str, Tensor]:
     """Pad a list of variable-length chunks into one batch, then shift.
     
     Collate = gather separate pieces together and put them in order.
@@ -78,4 +81,3 @@ def collate_fn(examples, pad_id=0):
         "input_ids": padded[: , :-1],
         "targets": padded[:, 1:]
     }
-

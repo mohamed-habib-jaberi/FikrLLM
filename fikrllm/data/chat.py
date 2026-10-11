@@ -4,8 +4,12 @@ chat.py -- turning question/answer pairs into instruction-following examples
 
 import pandas as pd
 import torch
+from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm import tqdm
+
+from fikrllm.config import ModelConfig
+from fikrllm.tokenizer import Tokenizer
 
 PAD_PLACEHOLDER = 0
 
@@ -18,14 +22,19 @@ DEFAULT_SYSTEM = {
 # Arabic letters all live in one block of numbers: 0x0600 to 0x06FF.
 ARABIC_LETTERS = range(0x0600, 0x0700)
 
-def system_for(text):
+def system_for(text: str) -> str:
     for char in text:
         if ord(char) in ARABIC_LETTERS:
             return DEFAULT_SYSTEM["ar"]
 
     return DEFAULT_SYSTEM["en"]
 
-def format_chat(tokenizer, question, answer=None, system=None):
+def format_chat(
+    tokenizer: Tokenizer,
+    question: str,
+    answer: str | None = None,
+    system: str | None = None,
+) -> tuple[list[int], list[int] | None]:
 
     """Build one conversation, and say which tokens the model is graded on.
 
@@ -75,8 +84,15 @@ class ChatDataset(Dataset):
     """Question/answer pairs as masked training examples.
     """
 
-    def __init__(self, questions, answers, tokenizer,
-                 config, languages=None, system=None):
+    def __init__(
+        self,
+        questions: list[str],
+        answers: list[str],
+        tokenizer: Tokenizer,
+        config: ModelConfig,
+        languages: list[str | None] | None = None,
+        system: str | None = None,
+    ) -> None:
 
         self.examples = []
 
@@ -95,6 +111,8 @@ class ChatDataset(Dataset):
             inputs, labels = format_chat(
                 tokenizer=tokenizer, question=question, answer=answer, system=row_system
             )
+            if labels is None:
+                raise ValueError("ChatDataset examples must include an answer")
 
             if len(inputs) > config.max_seq_len:
                 continue
@@ -104,7 +122,14 @@ class ChatDataset(Dataset):
             )
 
     @classmethod
-    def from_parquet(cls, path, tokenizer, config, limit=None, **kwargs):
+    def from_parquet(
+        cls,
+        path: str,
+        tokenizer: Tokenizer,
+        config: ModelConfig,
+        limit: int | None = None,
+        **kwargs,
+    ) -> "ChatDataset":
         frame = pd.read_parquet(path, columns=["question", "answer", "language"])
         if limit is not None:
             frame = frame.head(limit)
@@ -120,17 +145,19 @@ class ChatDataset(Dataset):
             **kwargs
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.examples)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> dict[str, Tensor]:
         inputs, labels = self.examples[index]
         return {
             "input_ids": torch.tensor(inputs, dtype=torch.long),
             "labels": torch.tensor(labels, dtype=torch.long),
         }
             
-def chat_collate_fn(examples, pad_id=0):
+def chat_collate_fn(
+    examples: list[dict[str, Tensor]], pad_id: int = 0
+) -> dict[str, Tensor]:
     """Pad a batch of chat examples.
     """
 
@@ -152,4 +179,3 @@ def chat_collate_fn(examples, pad_id=0):
         "input_ids": input_ids,
         "targets": targets,
     }
-

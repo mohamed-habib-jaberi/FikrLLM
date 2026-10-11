@@ -8,12 +8,21 @@ wastes almost all of the work, which is what the KV cache fixes.
 
 import torch
 
-from fikrllm.generation.sampling import sample
+from fikrllm.config import GenerationConfig
 from fikrllm.data.chat import format_chat, system_for
+from fikrllm.generation.sampling import sample
+from fikrllm.model.gpt import GPT
+from fikrllm.tokenizer import Tokenizer
 
 
 @torch.no_grad()
-def generate_ids(model, prompt_ids, config, eos_id=None, device=None):
+def generate_ids(
+    model: GPT,
+    prompt_ids: list[int],
+    config: GenerationConfig,
+    eos_id: int | None = None,
+    device: str | torch.device | None = None,
+) -> list[int]:
     """Continue prompt_ids, returning prompt and continuation together.
 
     One sequence at a time. Batched generation needs left-padding and an
@@ -62,7 +71,14 @@ def generate_ids(model, prompt_ids, config, eos_id=None, device=None):
     # ids[0].tolist()   →   [2, 11, 12, 13, 99]    flat: one sequence of ints
 
 
-def generate(model, tokenizer, prompt, config, device=None, chat: bool=False):
+def generate(
+    model: GPT,
+    tokenizer: Tokenizer,
+    prompt: str,
+    config: GenerationConfig,
+    device: str | torch.device | None = None,
+    chat: bool = False,
+) -> str:
     """Continue a prompt, returning only the newly generated text.
 
     The prompt is prefixed with [BOS] because training wrapped every document
@@ -84,4 +100,3 @@ def generate(model, tokenizer, prompt, config, device=None, chat: bool=False):
 
     response_ids = produced_ids[len(prompt_ids):]
     return tokenizer.decode(response_ids)
-

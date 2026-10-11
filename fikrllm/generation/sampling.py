@@ -9,15 +9,18 @@ same numbers.
 
 import torch
 import torch.nn.functional as F
+from torch import Tensor
+
+from fikrllm.config import GenerationConfig
 
 
-def greedy(logits):
+def greedy(logits: Tensor) -> int:
     """Always the likeliest token.
     """
 
     return int(torch.argmax(logits).item())
 
-def apply_temperature(logits, temperature: float):
+def apply_temperature(logits: Tensor, temperature: float) -> Tensor:
     """Divide the logits. Below 1 sharpens, above 1 flattens.
 
     Temperature acts before softmax, so it rescales the gaps between tokens
@@ -30,7 +33,7 @@ def apply_temperature(logits, temperature: float):
 
     return logits / temperature
 
-def top_k_filter(logits, k):
+def top_k_filter(logits: Tensor, k: int | None) -> Tensor:
     """Keep the k likeliest tokens, discard the rest.
 
     A fixed cutoff regardless of how confident the model is, which is the
@@ -54,7 +57,7 @@ def top_k_filter(logits, k):
 
     return logits.masked_fill(logits < kth_best, float("-inf"))
 
-def top_p_filter(logits, p):
+def top_p_filter(logits: Tensor, p: float | None) -> Tensor:
     """Keep the likeliest tokens whose probabilities sum to p (nucleus).
     """
 
@@ -97,7 +100,11 @@ def top_p_filter(logits, p):
 
     return torch.empty_like(logits).scatter_(-1, indices, filtered)
 
-def sample(logits, config, generator=None):
+def sample(
+    logits: Tensor,
+    config: GenerationConfig,
+    generator: torch.Generator | None = None,
+) -> int:
     """Pick a token according to a GenerationConfig.
 
     Order matters: temperature reshapes the distribution, then the filters
@@ -122,4 +129,3 @@ def sample(logits, config, generator=None):
               generator=generator).item()
         )
 
-    

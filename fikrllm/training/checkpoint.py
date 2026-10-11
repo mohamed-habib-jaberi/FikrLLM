@@ -8,9 +8,17 @@ from pathlib import Path
 import torch
 
 from fikrllm.config import ModelConfig
+from fikrllm.model.gpt import GPT
 
 
-def save_checkpoint(path, model, optimizer=None, scheduler=None, step=0, metrics=None):
+def save_checkpoint(
+    path: str | Path,
+    model: GPT,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
+    step: int = 0,
+    metrics: dict[str, float] | None = None,
+) -> Path:
     """Write everything needed to continue this run, or to rebuild the model.
     """
 
@@ -35,7 +43,13 @@ def save_checkpoint(path, model, optimizer=None, scheduler=None, step=0, metrics
     
 
 
-def load_checkpoint(path, model, optimizer=None, scheduler=None, map_location="cpu"):
+def load_checkpoint(
+    path: str | Path,
+    model: GPT,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
+    map_location: str | torch.device = "cpu",
+) -> int:
     """Restore into an existing model. Returns the step the run had reached.
     """
 
@@ -62,7 +76,9 @@ def load_checkpoint(path, model, optimizer=None, scheduler=None, map_location="c
     return checkpoint["step"]
 
 
-def model_config_from_checkpoint(path, map_location="cpu"):
+def model_config_from_checkpoint(
+    path: str | Path, map_location: str | torch.device = "cpu"
+) -> ModelConfig:
     """Read a checkpoint's ModelConfig without building anything.
     """
     

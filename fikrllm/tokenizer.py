@@ -56,12 +56,14 @@ class Tokenizer:
         "[ASST]": ASST,
     }
 
-    def __init__(self, backing_tokenizer: BackingTokenizer):
+    def __init__(self, backing_tokenizer: BackingTokenizer) -> None:
         """Conserver le tokenizer Hugging Face qui réalise le vrai travail."""
         self._tokenizer = backing_tokenizer
 
     @classmethod
-    def from_file(cls, path=DEFAULT_TOKENIZER_PATH):
+    def from_file(
+        cls, path: str | Path = DEFAULT_TOKENIZER_PATH
+    ) -> "Tokenizer":
         """Construire un ``Tokenizer`` à partir d'un fichier JSON sauvegardé.
 
         En plus de charger le vocabulaire, cette méthode vérifie les IDs des

@@ -5,6 +5,9 @@ moving the original weights
 
 import torch
 import torch.nn as nn
+from torch import Tensor
+
+from fikrllm.model.gpt import GPT
 
 # The four linear layers inside one attention block (attention.py). LoRA
 # targets these because attention is where a model decides *what to attend
@@ -18,7 +21,7 @@ ATTENTION_PROJECTIONS = ("W_q", "W_k", "W_v", "W_o")
 
 class LoRALinear(nn.Module):
 
-    def __init__(self, base: nn.Linear, r: int, alpha: int=16):
+    def __init__(self, base: nn.Linear, r: int, alpha: int = 16) -> None:
         super().__init__()
         self.base = base
 
@@ -41,11 +44,11 @@ class LoRALinear(nn.Module):
         # What is a=5**0.5? --> It's a number, √5 ≈ 2.236 to adjust the formula
         nn.init.kaiming_uniform_(self.A, a=5**0.5)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         detour = (x @ self.A.T) @ self.B.T
         return self.base(x) + self.scale * detour
 
-    def merged_weight(self):
+    def merged_weight(self) -> Tensor:
         """The one weight matrix an ordinary nn.Linear would need to behave
         identically to this layer, right now.
 
@@ -61,7 +64,12 @@ class LoRALinear(nn.Module):
 
         return self.base.weight + self.scale * (self.B @ self.A)
 
-def apply_lora(model, r: int = 8, alpha: int = 16, target_modules=ATTENTION_PROJECTIONS):
+def apply_lora(
+    model: GPT,
+    r: int = 8,
+    alpha: int = 16,
+    target_modules: tuple[str, ...] = ATTENTION_PROJECTIONS,
+) -> int:
     """Freeze the whole model, then wrap the named attention projections in
     every block with a LoRALinear.
     """
@@ -80,7 +88,10 @@ def apply_lora(model, r: int = 8, alpha: int = 16, target_modules=ATTENTION_PROJ
 
     return replaced
 
-def merge_lora(model, target_modules=ATTENTION_PROJECTIONS):
+def merge_lora(
+    model: GPT,
+    target_modules: tuple[str, ...] = ATTENTION_PROJECTIONS,
+) -> int:
     """Fold every LoRALinear's detour back into an ordinary nn.Linear.
     """
 
@@ -106,4 +117,3 @@ def merge_lora(model, target_modules=ATTENTION_PROJECTIONS):
             merged += 1
 
     return merged
-

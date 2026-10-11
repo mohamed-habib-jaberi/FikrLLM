@@ -15,7 +15,7 @@ from contextlib import nullcontext
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Dataset, Subset
 
 from fikrllm import (
     GPT,
@@ -35,8 +35,13 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 REPO_ROOT = Path(__file__).resolve().parent
 PACKED_DIR = REPO_ROOT / "scripts" / "ch03-build-tokenizer" / "output"
 
-def _make_loader(dataset, training_config, model_config,
-                  use_shuffle: bool=True, shuffle_seed: int=42):
+def _make_loader(
+    dataset: Dataset,
+    training_config: TrainingConfig,
+    model_config: ModelConfig,
+    use_shuffle: bool = True,
+    shuffle_seed: int = 42,
+) -> DataLoader:
     
     generator = None
     if use_shuffle:
@@ -53,7 +58,11 @@ def _make_loader(dataset, training_config, model_config,
         )
     )
 
-def _load_packed(path, model_config, limit=None):
+def _load_packed(
+    path: str | Path,
+    model_config: ModelConfig,
+    limit: int | None = None,
+) -> Dataset:
     """Open a packed .bin as a dataset of fixed-length windows."""
     print(f"loading {path}")
     dataset = PackedDataset.from_meta(path, model_config)
@@ -67,7 +76,12 @@ def _load_packed(path, model_config, limit=None):
 
     return dataset
 
-def log_packing_samples(dataset, tokenizer, n=3, seed=0):
+def log_packing_samples(
+    dataset: Dataset,
+    tokenizer: Tokenizer,
+    n: int = 3,
+    seed: int = 0,
+) -> None:
     """Print n random windows, decoded, so packing is visible rather than assumed."""
     rng = random.Random(seed)
     indices = rng.sample(range(len(dataset)), min(n, len(dataset)))
@@ -82,7 +96,7 @@ def log_packing_samples(dataset, tokenizer, n=3, seed=0):
         print(f"       text: {decoded[:120]}...")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument("--resume", type=Path, help="checkpoint to continue from")

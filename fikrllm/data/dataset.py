@@ -7,12 +7,15 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch import Tensor
 from torch.utils.data import Dataset
+
+from fikrllm.config import ModelConfig
 
 
 class PackedDataset(Dataset):
 
-    def __init__(self, path, config):
+    def __init__(self, path: str | Path, config: ModelConfig) -> None:
 
         self.path = Path(path)
         if not self.path.exists():
@@ -34,7 +37,9 @@ class PackedDataset(Dataset):
             )
 
     @classmethod
-    def from_meta(cls, path, config):
+    def from_meta(
+        cls, path: str | Path, config: ModelConfig
+    ) -> "PackedDataset":
         path = Path(path)
         dataset = cls(path, config)
         meta_path = path.parent / "meta.json"
@@ -46,13 +51,13 @@ class PackedDataset(Dataset):
         return dataset
 
     @property
-    def num_tokens(self):
+    def num_tokens(self) -> int:
         return len(self.tokens)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.num_windows
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> dict[str, Tensor]:
         start = index * self.window
         window = self.tokens[start : start + self.window]
 
@@ -61,4 +66,3 @@ class PackedDataset(Dataset):
                 window.astype(np.int64)
             )
         }
-

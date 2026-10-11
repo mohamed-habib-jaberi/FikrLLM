@@ -5,6 +5,12 @@ attention.py -- multi-head causal self-attention
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
+
+from fikrllm.config import ModelConfig
+
+KVCache = tuple[Tensor, Tensor]
+
 
 class MultiHeadAttention(nn.Module):
 
@@ -19,7 +25,7 @@ class MultiHeadAttention(nn.Module):
     Output: (B, seq_length, d_model)
     """
 
-    def __init__(self, config):
+    def __init__(self, config: ModelConfig) -> None:
         super().__init__()
 
         self.d_k = config.d_k
@@ -37,7 +43,12 @@ class MultiHeadAttention(nn.Module):
 
         self.register_buffer("mask", mask, persistent=False)
 
-    def forward(self, x, kv_cache=None, use_cache=False):
+    def forward(
+        self,
+        x: Tensor,
+        kv_cache: KVCache | None = None,
+        use_cache: bool = False,
+    ) -> tuple[Tensor, KVCache | None]:
 
         """kv_cache is the (key, value) pair from every previous step.
 
@@ -45,7 +56,7 @@ class MultiHeadAttention(nn.Module):
         During generation (ch11) it holds everything computed so far, so this
         step only has to project the one new token and append to it.
         """
-    
+
         batch_size, seq_len, d_model = x.shape
 
         q = self.W_q(x).view(batch_size, seq_len, self.n_heads, self.d_k).transpose(1, 2)
@@ -75,4 +86,3 @@ class MultiHeadAttention(nn.Module):
         out = out.transpose(1, 2).contiguous().view(batch_size, seq_len, d_model)
 
         return self.W_o(out), updated_cache
-    

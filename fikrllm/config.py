@@ -42,7 +42,7 @@ class ModelConfig:
 
     tie_weights: bool = True  # Partage embedding d'entrée et projection de sortie.
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Compléter les valeurs dérivées et refuser les formes impossibles."""
         if self.d_ff is None:
             self.d_ff = 4 * self.d_model
@@ -53,17 +53,17 @@ class ModelConfig:
             )
 
     @property
-    def d_k(self):
+    def d_k(self) -> int:
         """Largeur des vecteurs Query, Key et Value d'une seule tête."""
         return self.d_model // self.n_heads
 
     @classmethod
-    def fikrllm(cls):
+    def fikrllm(cls) -> "ModelConfig":
         """Configuration principale du projet : 8 blocs de largeur 512."""
         return cls(d_model=512, n_heads=8, n_layers=8, dropout=0.05)
 
     @classmethod
-    def tiny(cls):
+    def tiny(cls) -> "ModelConfig":
         """Petit modèle destiné aux tests rapides et aux machines sans GPU."""
         return cls(d_model=128, n_heads=4, n_layers=2, max_seq_len=256)
 
@@ -86,7 +86,7 @@ class GenerationConfig:
     seed: int | None = None  # Rend l'échantillonnage reproductible.
 
     @classmethod
-    def greedy(cls):
+    def greedy(cls) -> "GenerationConfig":
         """Toujours sélectionner le token le plus probable."""
         return cls(temperature=0.0, top_k=None, top_p=None)
 
@@ -152,7 +152,12 @@ def unique_run_name(base: str) -> str:
     return f"run-{random.randint(0, 9999):04d}-{base}-{stamp}"
 
 
-def steps_for_epochs(num_examples, batch_size, accumulation_steps, epochs):
+def steps_for_epochs(
+    num_examples: int,
+    batch_size: int,
+    accumulation_steps: int,
+    epochs: float,
+) -> int:
     """Convertir un nombre d'epochs en mises à jour réelles de l'optimiseur."""
     effective_batch = batch_size * accumulation_steps
     steps_per_epoch = math.ceil(num_examples / effective_batch)

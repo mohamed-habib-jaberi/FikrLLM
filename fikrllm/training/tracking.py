@@ -2,16 +2,23 @@
 tracking.py -- recording what happened during a run
 """
 
+from collections.abc import Sequence
 from dataclasses import asdict
 
 import trackio
+
+from fikrllm.config import ModelConfig, TrainingConfig
 
 
 class Tracker:
     """Logs metrics to Trackio, or to nothing at all.
     """
 
-    def __init__(self, training_config, model_config=None):
+    def __init__(
+        self,
+        training_config: TrainingConfig,
+        model_config: ModelConfig | None = None,
+    ) -> None:
         self.run_name = training_config.run_name
         self.project = training_config.project
         self.run_id = None
@@ -38,10 +45,16 @@ class Tracker:
 
         print(f"  open the dashboard:  trackio show --project {self.project}")
 
-    def log(self, metrics, step):
+    def log(self, metrics: dict[str, float], step: int) -> None:
         trackio.log(metrics, step=step)
 
-    def log_table(self, name, columns, rows, step):
+    def log_table(
+        self,
+        name: str,
+        columns: Sequence[str],
+        rows: Sequence[Sequence[object]],
+        step: int,
+    ) -> None:
 
         table_data = [ list(row) for row in rows ]
         table = trackio.Table(
@@ -53,13 +66,13 @@ class Tracker:
             name: table
         }, step=step)
 
-    def finish(self):
+    def finish(self) -> None:
         trackio.finish()
 
-    def __enter__(self):
+    def __enter__(self) -> "Tracker":
         return self
 
-    def __exit__(self, *exception):
+    def __exit__(self, *exception: object) -> bool:
         self.finish()
         return False
     

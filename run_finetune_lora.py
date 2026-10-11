@@ -82,8 +82,15 @@ FT_SAMPLE_REFERENCES = (
 )
 
 
-def build_loader(path, tokenizer, model_config, training_config,
-                 limit, use_shuffle: bool=True, shuffle_seed: int=42):
+def build_loader(
+    path: str | Path,
+    tokenizer: Tokenizer,
+    model_config: ModelConfig,
+    training_config: TrainingConfig,
+    limit: int | None,
+    use_shuffle: bool = True,
+    shuffle_seed: int = 42,
+) -> tuple[ChatDataset, DataLoader]:
 
     print(f"loading {path}")
     dataset = ChatDataset.from_parquet(path=path, tokenizer=tokenizer,
@@ -106,7 +113,7 @@ def build_loader(path, tokenizer, model_config, training_config,
 
     return dataset, loader
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument("--resume", type=Path,

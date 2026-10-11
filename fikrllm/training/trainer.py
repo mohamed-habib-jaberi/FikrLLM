@@ -4,18 +4,24 @@ trainer.py -- the training loop
 
 import itertools
 import time
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
+from torch import Tensor
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from fikrllm.config import GenerationConfig
+from fikrllm.config import GenerationConfig, TrainingConfig
 from fikrllm.generation import generate
+from fikrllm.model.gpt import GPT
+from fikrllm.tokenizer import Tokenizer
 from fikrllm.training.checkpoint import save_checkpoint
 from fikrllm.training.schedule import cosine_with_warmup
+from fikrllm.training.tracking import Tracker
 
 
-def document_cross_entropy(logits, targets, pad_id):
+def document_cross_entropy(logits: Tensor, targets: Tensor, pad_id: int) -> Tensor:
     """Next-token loss, averaged once per document rather than once per token.
 
     Standard language-model training averages over every token, which lets a
@@ -50,14 +56,14 @@ def document_cross_entropy(logits, targets, pad_id):
 class Trainer:
     def __init__(
         self,
-        model,
-        train_loader,
-        config,
-        eval_loader=None,
-        tracker=None,
-        tokenizer=None,
-        device=None,
-    ):
+        model: GPT,
+        train_loader: DataLoader,
+        config: TrainingConfig,
+        eval_loader: DataLoader | None = None,
+        tracker: Tracker | None = None,
+        tokenizer: Tokenizer | None = None,
+        device: str | torch.device | None = None,
+    ) -> None:
 
         if not device:
             self.device = torch.device(
@@ -86,7 +92,7 @@ class Trainer:
             max_new_tokens=config.sample_max_new_tokens, seed=config.seed
         )
 
-    def _build_optimizer(self):
+    def _build_optimizer(self) -> torch.optim.AdamW:
         """AdamW, with weight decay on matrices only.
         """
 
@@ -117,7 +123,7 @@ class Trainer:
         #  This project uses 0.95, not PyTorch's default 0.999, 
         #  because GPT-2 used 0.95. 
        
-    def _to_device(self, batch):
+    def _to_device(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
         return {key: value.to(self.device) for key, value in batch.items()}
 
     def _batches(self):
@@ -168,7 +174,7 @@ class Trainer:
         return total_loss, grad_norm
 
     @torch.no_grad()
-    def evaluate(self):
+    def evaluate(self) -> float | None:
         """Plain, flat mean loss on held-out data.
 
         Deliberately not train_step's per-document average: an eval number
@@ -186,17 +192,19 @@ class Trainer:
         for batch in itertools.islice(self.eval_loader, self.config.eval_batches):
             batch = self._to_device(batch)
             _, loss, _ = self.model(batch["input_ids"], targets=batch["targets"])
+            if loss is None:
+                raise RuntimeError("GPT must return a loss when targets are provided")
             total += loss.item()
             batches += 1
 
         self.model.train()
         return total / max(1, batches)
 
-    def _log(self, metrics):
+    def _log(self, metrics: dict[str, float]) -> None:
         if self.tracker is not None:
             self.tracker.log(metrics, step=self.step)
 
-    def save(self, filename):
+    def save(self, filename: str) -> Path:
         return save_checkpoint(
             f"{self.config.checkpoint_dir}/{filename}",
             self.model,
@@ -302,4 +310,3 @@ class Trainer:
 
 
 
-        

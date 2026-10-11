@@ -3,7 +3,10 @@ freeze.py -- finetune by choosing which of the model's own weights get to
 move, rather than moving all of them or adding new ones
 """
 
-def freeze_all(model):
+from fikrllm.model.gpt import GPT
+
+
+def freeze_all(model: GPT) -> None:
     """Set every parameter's requires_grad to False.
 
     A blank slate: nothing in the model trains until something is
@@ -16,9 +19,11 @@ def freeze_all(model):
 
     for parameter in model.parameters():
         parameter.requires_grad = False
-    
 
-def unfreeze_tail(model, n_blocks: int = 2, unfreeze_lm_head: bool = True):
+
+def unfreeze_tail(
+    model: GPT, n_blocks: int = 2, unfreeze_lm_head: bool = True
+) -> None:
     """Re-enable gradients for the last `n_blocks` Transformer blocks, the
     final LayerNorm, and (by default) the output projection.
     """
@@ -33,5 +38,3 @@ def unfreeze_tail(model, n_blocks: int = 2, unfreeze_lm_head: bool = True):
     if unfreeze_lm_head:
         for parameter in model.lm_head.parameters():
             parameter.requires_grad = True
-
-    

@@ -3,13 +3,17 @@ block.py -- one Transformer block
 """
 
 import torch.nn as nn
+from torch import Tensor
 
+from fikrllm.config import ModelConfig
 from fikrllm.model.attention import MultiHeadAttention
+from fikrllm.model.attention import KVCache
 from fikrllm.model.feedforward import FeedForward
+
 
 class TransformerBlock(nn.Module):
 
-    def __init__(self, config):
+    def __init__(self, config: ModelConfig) -> None:
         super().__init__()
 
         self.attn = MultiHeadAttention(config)
@@ -22,7 +26,12 @@ class TransformerBlock(nn.Module):
 
 
 
-    def forward(self, x, kv_cache=None, use_cache=False):
+    def forward(
+        self,
+        x: Tensor,
+        kv_cache: KVCache | None = None,
+        use_cache: bool = False,
+    ) -> tuple[Tensor, KVCache | None]:
 
         attention_out, updated_cache = self.attn(
             self.ln1(x), kv_cache=kv_cache, use_cache=use_cache
@@ -33,4 +42,3 @@ class TransformerBlock(nn.Module):
         x = x + self.dropout(ff_out)
 
         return x, updated_cache
-
