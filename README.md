@@ -1,222 +1,222 @@
-# FikrLLM — guide pédagogique complet
+# FikrLLM - Complete Educational Guide
 
-FikrLLM est un GPT bilingue arabe–anglais construit avec PyTorch. Ce dépôt est pensé pour comprendre les mécanismes : préparation de données, tokenizer BPE, Transformer, entraînement, génération et adaptation chat.
+FikrLLM is a bilingual Arabic-English GPT built with PyTorch. The repository is designed as a learning project: it walks through dataset preparation, BPE tokenization, Transformer architecture, pretraining, text generation, and LoRA-based chat fine-tuning.
 
-## Vue générale
+## Overview
 
-Un LLM ne lit pas directement du texte : il manipule des identifiants numériques.
+A language model does not read raw text directly. It works with numerical token IDs.
 
 ```text
-corpus brut
-  → nettoyer et filtrer
-  → entraîner le tokenizer BPE
-  → texte → IDs de tokens
-  → écrire train.bin / eval.bin
-  → entraîner GPT à prédire le token suivant
-  → sauvegarder un checkpoint
-  → générer du texte ou adapter le modèle au chat
+raw corpus
+  -> clean and filter
+  -> train the BPE tokenizer
+  -> convert text to token IDs
+  -> write train.bin / eval.bin
+  -> train GPT to predict the next token
+  -> save a checkpoint
+  -> generate text or fine-tune for chat
 ```
 
-| Étape | Fichiers principaux | Produit |
+| Stage | Main files | Output |
 |---|---|---|
-| Données | `scripts/ch03-build-tokenizer/01_clean_corpus.py`, `cleaning.py` | corpus tokenizer et paires Q/R |
-| Tokenizer | `02_build_tokenizer.py`, `fikrllm/tokenizer.py` | `tokenizer.json`, texte ↔ IDs |
+| Data | `scripts/ch03-build-tokenizer/01_clean_corpus.py`, `cleaning.py` | tokenizer corpus and Q/A pairs |
+| Tokenizer | `02_build_tokenizer.py`, `fikrllm/tokenizer.py` | `tokenizer.json`, text <-> token IDs |
 | Packing | `03_pack_corpus.py`, `fikrllm/data/dataset.py` | `train.bin`, `eval.bin`, `meta.json` |
-| Modèle | `fikrllm/model/` | GPT qui donne un score à chaque token |
-| Entraînement | `run_pretrain.py`, `fikrllm/training/` | checkpoints et métriques |
-| Génération | `fikrllm/generation/` | continuation / réponse |
-| Fine-tuning | `run_finetune_lora.py`, `data/chat.py`, `model/lora.py` | assistant Q/R |
+| Model | `fikrllm/model/` | GPT model that scores next-token candidates |
+| Training | `run_pretrain.py`, `fikrllm/training/` | checkpoints and metrics |
+| Generation | `fikrllm/generation/` | text continuation / answers |
+| Fine-tuning | `run_finetune_lora.py`, `data/chat.py`, `model/lora.py` | chat-style assistant |
 
-### Pipeline complet du projet
+### Complete project pipeline
 
-Ce schéma montre le chemin complet des données, depuis le dataset Hugging Face jusqu'au modèle capable de générer du texte ou de répondre en mode assistant.
+This diagram shows the full path from the Hugging Face dataset to a model that can generate text or answer in assistant format.
 
-Les grandes étapes sont :
+Main stages:
 
-1. Données brutes Hugging Face
-2. Nettoyage du corpus
-3. Construction du tokenizer
-4. Packing en fichiers binaires
-5. Dataset et batch
-6. Modèle GPT
-7. Pré-entraînement
-8. Checkpoint
-9. Génération de texte
-10. Fine-tuning LoRA pour mode assistant
+1. Raw Hugging Face data
+2. Corpus cleaning
+3. Tokenizer construction
+4. Binary packing
+5. Dataset and batch preparation
+6. GPT model
+7. Pretraining
+8. Checkpointing
+9. Text generation
+10. LoRA fine-tuning for chat
 
 ```text
-Étape 1 — Données brutes Hugging Face
-Dataset Hugging Face
+Stage 1 - Raw Hugging Face data
+Hugging Face dataset
 bakrianoo/jabarti-llm-dataset
-        │
-        ▼
-Étape 2 — Nettoyage du corpus
+        |
+        v
+Stage 2 - Corpus cleaning
 scripts/ch03-build-tokenizer/01_clean_corpus.py
-        │
-        │  Rôle:
-        │  - télécharge les fichiers Parquet
-        │  - nettoie le corpus pour le tokenizer
-        │  - prépare les fichiers de fine-tuning
-        │
-        ▼
+        |
+        |  Purpose:
+        |  - download Parquet files
+        |  - clean the corpus for tokenizer training
+        |  - prepare fine-tuning files
+        |
+        v
 scripts/ch03-build-tokenizer/output/
-        │
-        ├── tokenizer_corpus.parquet
-        ├── ft_train_filtered.parquet
-        └── ft_eval_filtered.parquet
-        │
-        ▼
-Étape 3 — Construction du tokenizer
+        |
+        |-- tokenizer_corpus.parquet
+        |-- ft_train_filtered.parquet
+        `-- ft_eval_filtered.parquet
+        |
+        v
+Stage 3 - Tokenizer construction
 scripts/ch03-build-tokenizer/02_build_tokenizer.py
-        │
-        │  Rôle:
-        │  - lit tokenizer_corpus.parquet
-        │  - entraîne le tokenizer BPE
-        │  - sauvegarde tokenizer.json
-        │
-        ▼
+        |
+        |  Purpose:
+        |  - read tokenizer_corpus.parquet
+        |  - train the BPE tokenizer
+        |  - save tokenizer.json
+        |
+        v
 fikrllm/assets/tokenizer.json
-        │
-        ▼
+        |
+        v
 fikrllm/tokenizer.py
-        │
-        │  Rôle:
-        │  - charge tokenizer.json
-        │  - transforme texte -> token IDs
-        │  - transforme token IDs -> texte
-        │
-        ▼
-Étape 4 — Packing en fichiers binaires
+        |
+        |  Purpose:
+        |  - load tokenizer.json
+        |  - convert text -> token IDs
+        |  - convert token IDs -> text
+        |
+        v
+Stage 4 - Binary packing
 scripts/ch03-build-tokenizer/03_pack_corpus.py
-        │
-        │  Rôle:
-        │  - reprend les textes du corpus
-        │  - applique le tokenizer
-        │  - transforme les documents en IDs
-        │  - sauvegarde les tokens en format binaire
-        │
-        ▼
+        |
+        |  Purpose:
+        |  - read corpus documents
+        |  - apply the tokenizer
+        |  - convert documents into token IDs
+        |  - save tokens in binary format
+        |
+        v
 scripts/ch03-build-tokenizer/output/
-        │
-        ├── train.bin
-        ├── eval.bin
-        └── meta.json
-        │
-        ▼
-Étape 5A — Dataset
+        |
+        |-- train.bin
+        |-- eval.bin
+        `-- meta.json
+        |
+        v
+Stage 5A - Dataset
 fikrllm/data/dataset.py
-        │
-        │  Rôle:
-        │  - lit train.bin / eval.bin
-        │  - crée des fenêtres de tokens
-        │  - garde le gros fichier sur disque avec numpy.memmap
-        │
-        ▼
-Étape 5B — Batch
+        |
+        |  Purpose:
+        |  - read train.bin / eval.bin
+        |  - create token windows
+        |  - keep the large binary file on disk with numpy.memmap
+        |
+        v
+Stage 5B - Batch
 fikrllm/data/collate.py
-        │
-        │  Rôle:
-        │  - regroupe plusieurs exemples en batch
-        │  - ajoute le padding si nécessaire
-        │  - crée input_ids et targets
-        │
-        ▼
-Étape 6 — Modèle GPT
+        |
+        |  Purpose:
+        |  - group examples into batches
+        |  - add padding when needed
+        |  - create input_ids and targets
+        |
+        v
+Stage 6 - GPT model
 fikrllm/model/
-        │
-        ├── embeddings.py     IDs -> vecteurs
-        ├── attention.py      attention multi-head
-        ├── feedforward.py    MLP du Transformer
-        ├── block.py          bloc Transformer complet
-        ├── gpt.py            modèle GPT complet
-        └── lora.py           adaptation LoRA
-        │
-        ▼
-Étape 7 — Pré-entraînement
+        |
+        |-- embeddings.py     IDs -> vectors
+        |-- attention.py      multi-head attention
+        |-- feedforward.py    Transformer MLP
+        |-- block.py          full Transformer block
+        |-- gpt.py            complete GPT model
+        `-- lora.py           LoRA adaptation
+        |
+        v
+Stage 7 - Pretraining
 run_pretrain.py
-        │
-        │  Rôle:
-        │  - charge le tokenizer
-        │  - charge le dataset
-        │  - crée le modèle GPT
-        │  - lance le pré-entraînement
-        │
-        ▼
-Modules utilisés pendant l'étape 7
+        |
+        |  Purpose:
+        |  - load the tokenizer
+        |  - load the dataset
+        |  - create the GPT model
+        |  - run pretraining
+        |
+        v
+Modules used during stage 7
 fikrllm/training/
-        │
-        ├── trainer.py        boucle d'entraînement
-        ├── schedule.py       learning rate schedule
-        ├── checkpoint.py     sauvegarde / chargement du modèle
-        └── tracking.py       logs et métriques
-        │
-        ▼
-Étape 8 — Checkpoint
+        |
+        |-- trainer.py        training loop
+        |-- schedule.py       learning-rate schedule
+        |-- checkpoint.py     model saving / loading
+        `-- tracking.py       logs and metrics
+        |
+        v
+Stage 8 - Checkpoint
 checkpoints/
-        │
-        └── modèle entraîné .pt
-        │
-        ▼
-Étape 9 — Génération de texte
+        |
+        `-- trained model .pt
+        |
+        v
+Stage 9 - Text generation
 fikrllm/generation/
-        │
-        ├── generate.py       boucle de génération
-        └── sampling.py       temperature, top-k, top-p
-        │
-        ▼
-Texte généré par FikrLLM
+        |
+        |-- generate.py       generation loop
+        `-- sampling.py       temperature, top-k, top-p
+        |
+        v
+Text generated by FikrLLM
 ```
 
-Le fine-tuning chat utilise une branche spéciale du même pipeline :
+The chat fine-tuning path is a separate branch of the same pipeline:
 
 ```text
-Étape 10 — Fine-tuning LoRA pour mode assistant
+Stage 10 - LoRA fine-tuning for chat
 ft_train_filtered.parquet / ft_eval_filtered.parquet
-        │
-        ▼
+        |
+        v
 fikrllm/data/chat.py
-        │
-        │  Rôle:
-        │  - transforme question/réponse en format chat
-        │  - ajoute [SYS], [USER], [ASST]
-        │  - masque la question pour entraîner seulement la réponse
-        │
-        ▼
+        |
+        |  Purpose:
+        |  - convert question/answer pairs into chat format
+        |  - add [SYS], [USER], [ASST]
+        |  - mask the prompt so only the answer is trained
+        |
+        v
 run_finetune_lora.py
-        │
-        │  Rôle:
-        │  - charge un checkpoint pré-entraîné
-        │  - applique LoRA
-        │  - entraîne le modèle à répondre comme assistant
-        │
-        ▼
-checkpoint fine-tuned
-        │
-        ▼
-generate.py avec chat=True
-        │
-        ▼
-Réponse style assistant
+        |
+        |  Purpose:
+        |  - load a pretrained checkpoint
+        |  - apply LoRA adapters
+        |  - train the model to answer like an assistant
+        |
+        v
+fine-tuned checkpoint
+        |
+        v
+generate.py with chat=True
+        |
+        v
+assistant-style answer
 ```
 
-Version courte :
+Short version:
 
 ```text
-01_clean_corpus.py     prépare le texte
-02_build_tokenizer.py  apprend le vocabulaire
-03_pack_corpus.py      transforme le texte en tokens binaires
-dataset.py             lit les tokens
-collate.py             prépare les batchs
-model/                 définit GPT
-trainer.py             entraîne GPT
-checkpoint.py          sauvegarde le modèle
-generate.py            utilise le modèle
-chat.py + lora.py      adaptent le modèle au mode assistant
+01_clean_corpus.py     prepares text
+02_build_tokenizer.py  learns the vocabulary
+03_pack_corpus.py      converts text into binary token files
+dataset.py             reads token files
+collate.py             prepares batches
+model/                 defines GPT
+trainer.py             trains GPT
+checkpoint.py          saves the model
+generate.py            uses the model
+chat.py + lora.py      adapt the model to assistant-style answers
 ```
 
 ## Installation
 
-Python 3.10+ est nécessaire.
+Python 3.10+ is required.
 
 ```bash
 conda create --name fikrllm python=3.11 pip -y
@@ -225,47 +225,68 @@ cd FikrLLM
 python -m pip install -e .
 ```
 
-`-e` signifie *editable* : modifier `fikrllm/` rend le changement immédiatement disponible sans réinstaller. `pyproject.toml` définit les dépendances : PyTorch (réseau), Tokenizers (BPE), Pandas/PyArrow (Parquet), Hugging Face (données) et TrackIO (métriques).
+`-e` means editable install: changes inside `fikrllm/` become available without reinstalling the package. `pyproject.toml` defines the project dependencies: PyTorch, Tokenizers, Pandas/PyArrow, Hugging Face tooling, and TrackIO.
 
-## Arborescence expliquée
+## Repository layout
 
 ```text
 FikrLLM/
-├── fikrllm/
-│   ├── config.py          dimensions et hyperparamètres
-│   ├── tokenizer.py       charge tokenizer.json, encode et décode
-│   ├── model/             embeddings, attention, GPT, LoRA
-│   ├── data/              fichiers binaires et batches
-│   ├── generation/        sampling et boucle auto-régressive
-│   ├── training/          optimisation, checkpoints, tracking
-│   └── assets/            tokenizer et notebook d'exploration
-├── scripts/
-│   ├── ch03-build-tokenizer/       pipeline minimal
-│   ├── wiki_data_collecting/       collecte bilingue étendue
-│   └── clean_and_build_dataset.py  fusion de données étendues
-├── run_pretrain.py        pré-entraînement
-├── run_finetune_lora.py   adaptation chat LoRA
-└── pyproject.toml         package et dépendances
+|-- fikrllm/
+|   |-- config.py          model and training configuration
+|   |-- tokenizer.py       loads tokenizer.json, encodes and decodes text
+|   |-- model/             embeddings, attention, GPT, LoRA
+|   |-- data/              binary datasets and batches
+|   |-- generation/        sampling and autoregressive generation
+|   |-- training/          optimization, checkpoints, tracking
+|   `-- assets/            tokenizer and exploration notebooks
+|-- scripts/
+|   |-- ch01-pytorch-intro/        PyTorch introduction notebook
+|   |-- ch03-build-tokenizer/      minimal tokenizer and packing pipeline
+|   |-- wiki_data_collecting/      extended bilingual data collection
+|   `-- clean_and_build_dataset.py dataset merging and normalization
+|-- run_pretrain.py        pretraining entry point
+|-- run_finetune_lora.py   LoRA chat fine-tuning entry point
+`-- pyproject.toml         package metadata and dependencies
 ```
 
-Les `__init__.py` ré-exportent les objets publics afin que `from fikrllm import GPT` fonctionne. Ils ne lancent aucune tâche.
+`__init__.py` files re-export public objects so imports such as `from fikrllm import GPT` work cleanly. They do not launch any training or data processing task.
+
+### Module documentation
+
+Important folders include their own dedicated `README.md` files:
+
+| Module | Documentation |
+|---|---|
+| Main package | [`fikrllm/README.md`](fikrllm/README.md) |
+| Data loading and batches | [`fikrllm/data/README.md`](fikrllm/data/README.md) |
+| GPT architecture | [`fikrllm/model/README.md`](fikrllm/model/README.md) |
+| Training | [`fikrllm/training/README.md`](fikrllm/training/README.md) |
+| Generation | [`fikrllm/generation/README.md`](fikrllm/generation/README.md) |
+| Assets and notebooks | [`fikrllm/assets/README.md`](fikrllm/assets/README.md) |
+| Notebook details | [`fikrllm/assets/notebooks/README.md`](fikrllm/assets/notebooks/README.md) |
+| Preparation scripts | [`scripts/README.md`](scripts/README.md) |
+| Script assets | [`scripts/assets/README.md`](scripts/assets/README.md) |
+| PyTorch introduction | [`scripts/ch01-pytorch-intro/README.md`](scripts/ch01-pytorch-intro/README.md) |
+| Tokenizer pipeline | [`scripts/ch03-build-tokenizer/README.md`](scripts/ch03-build-tokenizer/README.md) |
+| Wikipedia collection | [`scripts/wiki_data_collecting/README.md`](scripts/wiki_data_collecting/README.md) |
+| Tests | [`tests/README.md`](tests/README.md) |
 
 ---
 
-## 1. Corpus : nettoyage et normalisation
+## 1. Corpus cleaning and normalization
 
-Wikipedia contient du contenu utile mais aussi des catégories, références, liens, gabarits et répétitions. `cleaning.py` distingue deux opérations, qu'il ne faut pas confondre.
+Wikipedia contains useful content, but it also contains categories, references, links, templates, duplicated lines, and low-value sections. `cleaning.py` separates two operations that should not be confused.
 
-| Type | Fonctions | Quand ? | But |
+| Type | Functions | When? | Goal |
 |---|---|---|---|
-| A — nettoyage structurel | `prepare_document()`, `clean_dataframe()` | une fois, hors entraînement | enlever le bruit des dumps |
-| B — normalisation légère | `build_normalizer()`, `normalize_text()` | tokenizer **et** inférence | garantir les mêmes règles de texte |
+| A - structural cleaning | `prepare_document()`, `clean_dataframe()` | once, offline | remove dump noise |
+| B - lightweight normalization | `build_normalizer()`, `normalize_text()` | tokenizer and inference | keep text rules consistent |
 
-Le nettoyage Type A retire les restes de citations (`cite web`, `استشهاد ويب`), les lignes de catégories, les sections « References / See also », les sections trop courtes et les doublons consécutifs. C'est destructif : on ne doit jamais l'appliquer à une question libre de l'utilisateur.
+Type A cleaning removes citation leftovers (`cite web`, Arabic citation templates), category lines, sections such as "References" or "See also", very short sections, and consecutive duplicate lines. It is destructive, so it should not be applied directly to a free-form user prompt.
 
-Le Type B applique NFC, supprime les diacritiques/tatweel arabes, unifie `أ إ آ` vers `ا`, `ى` vers `ي`, puis réduit les espaces. Ces règles sont embarquées dans `tokenizer.json`; `Tokenizer.encode()` les réapplique donc automatiquement aux prompts.
+Type B applies NFC normalization, removes Arabic diacritics and tatweel, normalizes Arabic letter variants such as `أ إ آ` to `ا`, normalizes `ى` to `ي`, and collapses whitespace. These rules are embedded in `tokenizer.json`, so `Tokenizer.encode()` applies them consistently to prompts.
 
-Test local, sans téléchargement ni entraînement :
+Local test, without downloading or training:
 
 ```bash
 cd scripts/ch03-build-tokenizer
@@ -278,74 +299,74 @@ for x in ["جُمْهُورِيَّةُ مِصْرَ الْعَرَبِيَّة"
 
 ### `01_clean_corpus.py`
 
-Ce script télécharge des shards Parquet, prépare les fichiers de chat et fabrique l'échantillon qui entraîne le tokenizer :
+This script downloads Parquet shards, prepares chat files, and builds the sampled corpus used to train the tokenizer:
 
 ```bash
 python scripts/ch03-build-tokenizer/01_clean_corpus.py \
   --max-shards 1 --tokenizer-docs 1000
 ```
 
-| Sortie dans `scripts/ch03-build-tokenizer/output/` | Usage |
+| Output in `scripts/ch03-build-tokenizer/output/` | Usage |
 |---|---|
-| `tokenizer_corpus.parquet` | documents Type A nettoyés pour `02_build_tokenizer.py` |
-| `ft_train_filtered.parquet` | paires question/réponse pour le fine-tuning |
-| `ft_eval_filtered.parquet` | paires question/réponse de validation |
+| `tokenizer_corpus.parquet` | Type A cleaned documents for `02_build_tokenizer.py` |
+| `ft_train_filtered.parquet` | question/answer pairs for fine-tuning |
+| `ft_eval_filtered.parquet` | validation question/answer pairs |
 
-`--max-shards 1` et `--tokenizer-docs 1000` sont adaptés aux tests; les valeurs par défaut téléchargent plusieurs Go et ciblent 400 000 documents.
+`--max-shards 1` and `--tokenizer-docs 1000` are useful for quick tests. Default settings download several GB and target 400,000 tokenizer-training documents.
 
-`03_pack_corpus.py` applique le même nettoyage Type A à chaque shard avant la tokenisation. La normalisation Type B reste ensuite appliquée automatiquement par le tokenizer. Le fichier `meta.json` conserve aussi le hash SHA-256 du tokenizer, ce qui permet de vérifier précisément avec quel vocabulaire les binaires ont été construits.
+`03_pack_corpus.py` applies the same Type A cleaning to every shard before tokenization. Type B normalization still runs automatically inside the tokenizer. `meta.json` also stores the tokenizer SHA-256 hash, which makes it possible to verify exactly which vocabulary was used to build the binary files.
 
 ---
 
-## 2. Tokenizer : du texte aux IDs
+## 2. Tokenizer: from text to IDs
 
-BPE (*Byte Pair Encoding*) apprend des sous-morceaux fréquents. Il ne découpe ni strictement par mots ni strictement par lettres : un mot courant peut devenir un seul token, tandis qu'un mot rare peut devenir plusieurs morceaux. Chaque morceau est représenté par un entier.
+BPE, or Byte Pair Encoding, learns frequent subword pieces. It does not split strictly by words or strictly by characters: a common word can become one token, while a rare word can become several pieces. Each piece is represented by an integer.
 
-`02_build_tokenizer.py` lit `tokenizer_corpus.parquet`, entraîne un vocabulaire de 32 000 tokens et sauvegarde `tokenizer.json`.
+`02_build_tokenizer.py` reads `tokenizer_corpus.parquet`, trains a 32,000-token vocabulary, and saves `tokenizer.json`.
 
 ```bash
 python scripts/ch03-build-tokenizer/02_build_tokenizer.py
 ```
 
-| Token | ID | Signification |
+| Token | ID | Meaning |
 |---|---:|---|
-| `[PAD]` | 0 | remplissage ignoré par la loss |
-| `[UNK]` | 1 | élément inconnu |
-| `[BOS]` / `[EOS]` | 2 / 3 | début / fin de document ou réponse |
-| `[SEP]` | 4 | séparateur disponible |
-| `[AR]` / `[EN]` | 5 / 6 | marqueurs de langue disponibles |
-| `[SYS]`, `[USER]`, `[ASST]` | 7 / 8 / 9 | rôles conversationnels |
+| `[PAD]` | 0 | padding ignored by the loss |
+| `[UNK]` | 1 | unknown item |
+| `[BOS]` / `[EOS]` | 2 / 3 | beginning / end of document or answer |
+| `[SEP]` | 4 | available separator |
+| `[AR]` / `[EN]` | 5 / 6 | available language markers |
+| `[SYS]`, `[USER]`, `[ASST]` | 7 / 8 / 9 | conversation role tokens |
 
-Le script sauvegarde directement le tokenizer officiel dans `fikrllm/assets/tokenizer.json`. Le packing, les notebooks et l'entraînement chargent tous ce même fichier afin d'éviter toute divergence d'IDs.
+The script saves the official tokenizer directly to `fikrllm/assets/tokenizer.json`. Packing, notebooks, training, and generation all load this same file to avoid token-ID drift.
 
 ### `fikrllm/tokenizer.py`
 
-Ce module n'entraîne rien : il charge le tokenizer sauvegardé et présente une interface stable au reste du projet.
+This module does not train a tokenizer. It loads the saved tokenizer and gives the rest of the project a stable interface.
 
 ```python
 from fikrllm.tokenizer import Tokenizer
 
 tok = Tokenizer.from_file()
 ids = tok.encode("أحمد lives in Cairo")
-morceaux = tok.tokenize("أحمد lives in Cairo")
-texte = tok.decode(ids)
+pieces = tok.tokenize("أحمد lives in Cairo")
+text = tok.decode(ids)
 ```
 
-`from_file()` vérifie le fichier, laisse la bibliothèque Hugging Face reconstruire le tokenizer BPE, puis renvoie l'objet FikrLLM. Cet objet expose aussi `tok.BOS`, `tok.EOS`, `tok.USER` et `tok.ASST`; ainsi les autres modules ne recopient jamais les IDs spéciaux à la main.
+`from_file()` checks the file, lets the Hugging Face Tokenizers library rebuild the BPE tokenizer, and returns the FikrLLM wrapper. The wrapper also exposes `tok.BOS`, `tok.EOS`, `tok.USER`, and `tok.ASST`, so other modules do not copy special IDs by hand.
 
-Le notebook `fikrllm/assets/notebooks/tokenizer_embeddings.ipynb` sert de banc de test interactif pour `fikrllm/tokenizer.py`. Il permet de vérifier le chargement de `tokenizer.json`, la normalisation arabe–anglaise, la tokenisation, l'encodage, le décodage et la transformation des IDs en embeddings, sans lancer un entraînement complet.
+The notebook `fikrllm/assets/notebooks/tokenizer_embeddings.ipynb` is an interactive test bench for `fikrllm/tokenizer.py`. It helps verify tokenizer loading, Arabic-English normalization, tokenization, encoding, decoding, and the conversion from IDs to embeddings without launching a full training run.
 
 ---
 
-## 3. Packing : construire un dataset performant
+## 3. Packing: building an efficient dataset
 
-Encoder des chaînes à chaque epoch serait lent. `03_pack_corpus.py` encode les documents une fois puis écrit un flux compact de `uint16`. Ce format suffit, car 32 000 IDs tiennent dans la plage 0–65 535.
+Encoding strings at every epoch would be slow. `03_pack_corpus.py` encodes documents once and writes a compact `uint16` token stream. This format is enough because 32,000 token IDs fit in the 0-65,535 range.
 
 ```bash
 python scripts/ch03-build-tokenizer/03_pack_corpus.py --max-shards 1
 ```
 
-Le script ajoute les frontières de documents **avant** de concaténer :
+The script adds document boundaries before concatenation:
 
 ```text
 document A  [BOS] a b c [EOS]
@@ -353,48 +374,48 @@ document B  [BOS] d e   [EOS]
 train.bin   [BOS] a b c [EOS] [BOS] d e [EOS] ...
 ```
 
-| Fichier | Usage |
+| File | Usage |
 |---|---|
-| `train.bin` | tokens qui mettent à jour les poids |
-| `eval.bin` | corpus séparé pour mesurer la généralisation |
-| `meta.json` | provenance, nombre de tokens et vocabulaire |
+| `train.bin` | tokens used to update model weights |
+| `eval.bin` | held-out corpus used to measure generalization |
+| `meta.json` | provenance, token counts, and tokenizer metadata |
 
-`data/dataset.py` utilise `numpy.memmap`: le gros fichier reste sur disque et seules les fenêtres demandées sont lues. Une fenêtre a `max_seq_len + 1` tokens, afin que `data/collate.py` crée la tâche de prédiction suivante :
+`data/dataset.py` uses `numpy.memmap`: the large file stays on disk and only requested windows are read. A window has `max_seq_len + 1` tokens so `data/collate.py` can create the next-token prediction task:
 
 ```text
-fenêtre : [BOS, t1, t2, t3, EOS]
-entrée  : [BOS, t1, t2, t3]
-cible   : [t1,   t2, t3, EOS]
+window : [BOS, t1, t2, t3, EOS]
+input  : [BOS, t1, t2, t3]
+target : [t1,  t2, t3, EOS]
 ```
 
-Le modèle apprend « étant donné ce qui précède, prédire ce qui suit ». Le padding ajouté à la fin des batches est ignoré dans la loss.
+The model learns: given what came before, predict what comes next. Padding added at the end of batches is ignored by the loss.
 
 ---
 
-## 4. Architecture GPT : module par module
+## 4. GPT architecture: module by module
 
-`config.py` est la source de vérité des dimensions. `ModelConfig.fikrllm()` crée le modèle normal (8 blocs, largeur 512, 8 têtes, contexte 1024). `ModelConfig.tiny()` crée un modèle CPU rapide (2 blocs, largeur 128, contexte 256). `d_model` doit être divisible par `n_heads`, car une tête reçoit `d_model / n_heads` dimensions.
+`config.py` is the source of truth for model dimensions. `ModelConfig.fikrllm()` creates the normal model (8 blocks, width 512, 8 heads, context length 1024). `ModelConfig.tiny()` creates a CPU-friendly model (2 blocks, width 128, context length 256). `d_model` must be divisible by `n_heads`, because each head receives `d_model / n_heads` dimensions.
 
-| Fichier | Rôle |
+| File | Role |
 |---|---|
-| `model/embeddings.py` | transforme IDs et positions en vecteurs, puis applique dropout |
-| `model/attention.py` | Query, Key, Value, attention multi-têtes et masque causal |
-| `model/feedforward.py` | MLP par position : `d_model → d_ff → d_model` avec GELU |
-| `model/block.py` | LayerNorm, attention résiduelle, puis MLP résiduel |
-| `model/gpt.py` | assemble les couches et produit un score par token du vocabulaire |
-| `model/lora.py` | ajoute puis fusionne les adaptateurs de fine-tuning |
+| `model/embeddings.py` | turns IDs and positions into vectors, then applies dropout |
+| `model/attention.py` | Query, Key, Value, multi-head attention, and causal mask |
+| `model/feedforward.py` | per-position MLP: `d_model -> d_ff -> d_model` with GELU |
+| `model/block.py` | LayerNorm, residual attention, then residual MLP |
+| `model/gpt.py` | assembles the model and produces vocabulary logits |
+| `model/lora.py` | adds and merges fine-tuning adapters |
 
-`GPT.forward(input_ids)` retourne des logits de forme `(batch, longueur, vocab_size)`. Un logit est un score, pas une probabilité. Le masque causal interdit à une position de regarder les tokens futurs : sans lui, le modèle verrait la réponse pendant l'entraînement et tricherait.
+`GPT.forward(input_ids)` returns logits with shape `(batch, length, vocab_size)`. A logit is a score, not a probability. The causal mask prevents a position from looking at future tokens; without it, the model would see the answer during training and cheat.
 
-`gpt.py` utilise le *weight tying* : les poids de l'embedding et de la projection finale sont partagés. Cela réduit les paramètres et emploie un même espace pour lire et scorer un token.
+`gpt.py` uses weight tying: token embedding weights and the final projection weights are shared. This reduces parameter count and uses the same space to read and score tokens.
 
 ---
 
-## 5. Pré-entraînement
+## 5. Pretraining
 
-`run_pretrain.py` relie tokenizer, binaires, DataLoader, modèle et `Trainer`.
+`run_pretrain.py` connects the tokenizer, binary files, DataLoader, model, and `Trainer`.
 
-Commence par un test complet sur CPU :
+Start with a complete CPU smoke test:
 
 ```bash
 python run_pretrain.py --tiny --steps 60 --warmup 10 \
@@ -402,26 +423,26 @@ python run_pretrain.py --tiny --steps 60 --warmup 10 \
   --print-every 10 --sample-every 30 --device cpu
 ```
 
-`--limit` restreint les fenêtres et `--steps` les mises à jour. C'est un smoke test : il valide le code mais ne crée pas un modèle de langue compétent.
+`--limit` restricts the number of windows and `--steps` restricts the number of optimizer updates. This validates the code path, but it does not train a competent language model.
 
 ### `training/trainer.py`
 
-Une mise à jour suit ce chemin :
+One optimizer update follows this path:
 
-1. déplacer le batch vers CPU/GPU ;
-2. faire passer les IDs dans GPT ;
-3. comparer logits et cibles avec la cross-entropy ;
-4. appeler `backward()` ;
-5. limiter éventuellement la norme des gradients ;
-6. appliquer AdamW ;
-7. avancer le learning rate ;
-8. selon la configuration, faire validation, sauvegarde et génération d'exemples.
+1. move the batch to CPU/GPU;
+2. pass IDs through GPT;
+3. compare logits and targets with cross-entropy;
+4. call `backward()`;
+5. optionally clip gradient norm;
+6. apply AdamW;
+7. advance the learning-rate scheduler;
+8. optionally run evaluation, checkpointing, and sample generation.
 
-`document_cross_entropy()` moyenne d'abord les tokens d'un exemple, puis les exemples. Cela évite qu'un document long domine une mise à jour uniquement grâce à son nombre de tokens.
+`document_cross_entropy()` averages tokens within each example first, then averages across examples. This prevents a long document from dominating an update just because it has more tokens.
 
-L'accumulation permet de simuler un batch plus grand sans le garder en mémoire. `--batch-size 8 --accumulation-steps 4` correspond à quatre micro-batches de 8 et à un batch effectif de 32.
+Gradient accumulation simulates a larger batch without storing it all in memory. `--batch-size 8 --accumulation-steps 4` means four micro-batches of 8, or an effective batch size of 32.
 
-`training/schedule.py` réalise un warmup linéaire suivi d'une décroissance cosinus. `training/checkpoint.py` enregistre les poids, le `ModelConfig`, le step et, pour le pré-entraînement, l'optimiseur et le scheduler afin que `--resume` reprenne réellement l'entraînement.
+`training/schedule.py` implements linear warmup followed by cosine decay. `training/checkpoint.py` saves weights, `ModelConfig`, step, optimizer, and scheduler so `--resume` can continue training properly.
 
 ```bash
 python run_pretrain.py --epochs 15 \
@@ -435,23 +456,23 @@ python run_pretrain.py --epochs 15 \
 
 ---
 
-## 6. Génération
+## 6. Generation
 
-`generation/generate.py` répète :
+`generation/generate.py` repeats this loop:
 
 ```text
-prompt → GPT → logits du dernier token → choisir un ID → ajouter l'ID → recommencer
+prompt -> GPT -> logits for the last token -> choose an ID -> append the ID -> repeat
 ```
 
-| Paramètre dans `GenerationConfig` | Effet |
+| Parameter in `GenerationConfig` | Effect |
 |---|---|
-| `temperature=0` | greedy : toujours le token le plus probable |
-| température < 1 | texte moins varié |
-| température > 1 | texte plus varié mais plus risqué |
-| `top_k=50` | garde les 50 meilleurs candidats |
-| `top_p=0.95` | garde les candidats qui totalisent 95 % de probabilité |
+| `temperature=0` | greedy decoding: always choose the most likely token |
+| temperature < 1 | less varied text |
+| temperature > 1 | more varied but riskier text |
+| `top_k=50` | keep the 50 best candidates |
+| `top_p=0.95` | keep candidates that cover 95% probability mass |
 
-`sampling.py` implémente ces règles. La génération emploie en général un cache KV : les clés/valeurs d'attention des anciens tokens sont conservées, afin de ne pas recalculer tout le prompt à chaque nouveau token.
+`sampling.py` implements these rules. Generation usually uses a KV cache: attention keys/values from previous tokens are kept so the model does not recompute the full prompt at every new token.
 
 ```bash
 python - <<'PY'
@@ -467,23 +488,23 @@ PY
 
 ---
 
-## 7. Fine-tuning chat avec LoRA
+## 7. Chat fine-tuning with LoRA
 
-Un modèle pré-entraîné complète du texte; il ne sait pas automatiquement respecter le format question-réponse. `data/chat.py` transforme une paire Q/R en :
-
-```text
-[BOS] [SYS] instruction [USER] question [ASST] réponse [EOS]
-```
-
-La loss ignore toute la partie prompt et ne note que la réponse. Le modèle n'est donc pas entraîné à reproduire les questions utilisateur.
-
-`model/lora.py` gèle les poids de base et apprend une petite correction de rang `r` :
+A pretrained model completes text; it does not automatically follow a question/answer format. `data/chat.py` converts one Q/A pair into:
 
 ```text
-sortie = xW + (alpha / r) × x Aᵀ Bᵀ
+[BOS] [SYS] instruction [USER] question [ASST] answer [EOS]
 ```
 
-Au lieu de modifier chaque grande matrice `W`, LoRA apprend `A` et `B` sur les projections d'attention `W_q`, `W_k`, `W_v`, `W_o`. Après l'entraînement, `merge_lora()` replie ces corrections dans les matrices ordinaires.
+The loss ignores the prompt and grades only the answer. The model is therefore not trained to reproduce user questions.
+
+`model/lora.py` freezes the base weights and learns a small rank-`r` correction:
+
+```text
+output = xW + (alpha / r) * x A^T B^T
+```
+
+Instead of updating every large matrix `W`, LoRA learns `A` and `B` on the attention projections `W_q`, `W_k`, `W_v`, and `W_o`. After training, `merge_lora()` folds the corrections back into normal linear matrices.
 
 ```bash
 python run_finetune_lora.py \
@@ -493,41 +514,41 @@ python run_finetune_lora.py \
   --print-every 10 --sample-every 30
 ```
 
-`--resume` est essentiel en pratique : LoRA appliqué à un réseau aléatoire ne produit pas un assistant utile.
+`--resume` is essential in practice: applying LoRA to a random network will not produce a useful assistant.
 
 ---
 
-## Pipeline bilingue étendu
+## Extended bilingual data pipeline
 
-Ces scripts sont facultatifs pour le parcours minimal et font des appels réseau. Ils permettent de reconstruire un corpus Égypte/MENA arabe–anglais plus riche.
+These scripts are optional for the minimal path and perform network calls. They help rebuild a richer Arabic-English Egypt/MENA corpus.
 
-| Fichier | Rôle |
+| File | Role |
 |---|---|
-| `wiki_data_collecting/step05-collect-english-base-model-dataset.py` | récupère les équivalents anglais des pages et produit les JSONL des phases 1/2 |
-| `wiki_data_collecting/step06-translate-finetune-dataset-to-english.py` | traduit ensemble titre, question et réponse avec vLLM/TranslateGemma pour préserver les noms propres |
-| `wiki_data_collecting/step07-augment-english-dataset.py` | récupère résumés de figures et catégories Wikipedia EN/AR, avec débit limité et déduplication |
-| `clean_and_build_dataset.py` | normalise le schéma, filtre bruit/stubs, tronque les textes et peut publier sur Hugging Face |
+| `wiki_data_collecting/step05-collect-english-base-model-dataset.py` | retrieves English counterparts and writes phase 1/2 JSONL files |
+| `wiki_data_collecting/step06-translate-finetune-dataset-to-english.py` | translates title, question, and answer together with vLLM/TranslateGemma to preserve names |
+| `wiki_data_collecting/step07-augment-english-dataset.py` | collects summaries for figures and Wikipedia categories in EN/AR with rate limiting and deduplication |
+| `clean_and_build_dataset.py` | normalizes the schema, filters noise/stubs, truncates text, and can publish to Hugging Face |
 
-Ordre logique : étape 05, étape 06, étape 07 si nécessaire, puis `clean_and_build_dataset.py --no-upload` pour inspecter les sorties avant publication.
+Logical order: step 05, step 06, step 07 if needed, then `clean_and_build_dataset.py --no-upload` to inspect outputs before publishing.
 
-## Suivi et dépannage
+## Tracking and troubleshooting
 
-Les métriques sont enregistrées avec TrackIO :
+Metrics are logged with TrackIO:
 
 ```bash
 trackio show --project fikrllm --host 0.0.0.0
 ```
 
-Checklist :
+Checklist:
 
-1. `Tokenizer.from_file()` échoue : vérifie `fikrllm/assets/tokenizer.json`.
-2. `PackedDataset` échoue : crée `train.bin`/`eval.bin` avec `03_pack_corpus.py` ou utilise le bon `--data-dir`.
-3. Un checkpoint refuse de charger : construis le GPT avec `model_config_from_checkpoint(path)`, pas une configuration différente.
-4. Mémoire insuffisante : utilise `--tiny`, diminue `--batch-size`, augmente l'accumulation et commence avec `--limit`.
-5. Texte incohérent après quelques steps : c'est normal pour un smoke test.
-6. Loss `nan` ou instable : réduis le learning rate et examine les données.
+1. `Tokenizer.from_file()` fails: check `fikrllm/assets/tokenizer.json`.
+2. `PackedDataset` fails: create `train.bin` / `eval.bin` with `03_pack_corpus.py` or use the correct `--data-dir`.
+3. A checkpoint refuses to load: build GPT with `model_config_from_checkpoint(path)`, not a different configuration.
+4. Out of memory: use `--tiny`, lower `--batch-size`, increase accumulation, and start with `--limit`.
+5. Text looks incoherent after a few steps: this is normal for a smoke test.
+6. Loss becomes `nan` or unstable: reduce the learning rate and inspect the data.
 
-## Parcours minimal reproductible
+## Minimal reproducible path
 
 ```bash
 python -m pip install -e .
@@ -540,4 +561,4 @@ python run_pretrain.py --tiny --steps 10 --warmup 2 --limit 100 --eval-limit 20 
   --batch-size 2 --device cpu --print-every 1 --sample-every 0
 ```
 
-Cette dernière commande vérifie que tokenizer, données, modèle, loss et optimisation coopèrent. Elle ne suffit pas à apprendre une langue : un modèle utile demande davantage de données, de steps et généralement un GPU.
+The final command verifies that tokenizer, data, model, loss, and optimization work together. It is not enough to learn a language: a useful model needs more data, more steps, and usually a GPU.

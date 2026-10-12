@@ -1,17 +1,17 @@
-"""Interface commune entre le texte et les identifiants compris par GPT.
+"""Shared interface between text and the IDs understood by GPT.
 
-Le vocabulaire BPE et les règles de normalisation ne sont pas appris ici :
-ils sont chargés depuis ``assets/tokenizer.json``, produit par le chapitre 3.
-Cette classe enveloppe le tokenizer Hugging Face afin que tout le projet utilise
-la même API et les mêmes identifiants pour les tokens spéciaux.
+The BPE vocabulary and normalization rules are not learned here: they are
+loaded from ``assets/tokenizer.json``, produced by chapter 3. This class wraps
+the Hugging Face tokenizer so the whole project uses the same API and the same
+IDs for special tokens.
 
-Flux principal::
+Main flow::
 
-    texte brut -> normalize/tokenize/encode -> IDs -> modèle GPT
-    texte final <- decode                 <- IDs <- modèle GPT
+    raw text   -> normalize/tokenize/encode -> IDs -> GPT model
+    final text <- decode                   <- IDs <- GPT model
 
-Le notebook ``assets/notebooks/tokenizer_embeddings.ipynb`` permet de tester
-ces opérations interactivement sans lancer l'entraînement du modèle.
+The notebook ``assets/notebooks/tokenizer_embeddings.ipynb`` can be used to
+test these operations interactively without launching model training.
 """
 
 from pathlib import Path
@@ -22,15 +22,15 @@ DEFAULT_TOKENIZER_PATH = Path(__file__).parent / "assets" / "tokenizer.json"
 
 
 class Tokenizer:
-    """Charge et utilise le tokenizer bilingue arabe–anglais de FikrLLM.
+    """Load and use the bilingual Arabic-English tokenizer for FikrLLM.
 
-    La classe délègue les opérations BPE à ``tokenizers.Tokenizer`` et expose
-    directement des listes Python d'IDs ou de morceaux. Les constantes
-    ``BOS``, ``EOS``, ``USER`` et autres évitent de disperser des nombres
-    magiques dans le packing, le fine-tuning et la génération.
+    The class delegates BPE operations to ``tokenizers.Tokenizer`` and exposes
+    plain Python lists of IDs or token pieces. Constants such as ``BOS``,
+    ``EOS``, and ``USER`` avoid scattering magic numbers across packing,
+    fine-tuning, and generation.
     """
 
-    # Ces IDs doivent rester synchronisés avec l'ordre de SPECIAL_TOKENS dans
+    # These IDs must stay synchronized with the SPECIAL_TOKENS order in
     # scripts/ch03-build-tokenizer/02_build_tokenizer.py.
     PAD = 0
     UNK = 1
@@ -58,7 +58,7 @@ class Tokenizer:
 
     # Initialize this object with the state it needs later.
     def __init__(self, backing_tokenizer: BackingTokenizer) -> None:
-        """Conserver le tokenizer Hugging Face qui réalise le vrai travail."""
+        """Keep the Hugging Face tokenizer that does the actual work."""
         self._tokenizer = backing_tokenizer
 
     # Purpose: from file.
@@ -66,11 +66,11 @@ class Tokenizer:
     def from_file(
         cls, path: str | Path = DEFAULT_TOKENIZER_PATH
     ) -> "Tokenizer":
-        """Construire un ``Tokenizer`` à partir d'un fichier JSON sauvegardé.
+        """Build a ``Tokenizer`` from a saved JSON file.
 
-        En plus de charger le vocabulaire, cette méthode vérifie les IDs des
-        tokens spéciaux. Cette validation empêche d'utiliser silencieusement
-        un vocabulaire incompatible avec les données ou les checkpoints.
+        In addition to loading the vocabulary, this method verifies special
+        token IDs. That validation prevents silently using a vocabulary that is
+        incompatible with the data or checkpoints.
         """
         path = Path(path)
         if not path.exists():
@@ -94,19 +94,19 @@ class Tokenizer:
 
     # Normalize text with the tokenizer backend rules.
     def normalize(self, text: str) -> str:
-        """Appliquer uniquement les règles de normalisation du tokenizer."""
+        """Apply only the tokenizer normalization rules."""
         return self._tokenizer.normalizer.normalize_str(text)
 
     # Convert one text string into token IDs.
     def encode(self, text: str, add_special_tokens: bool = False) -> list[int]:
-        """Normaliser et convertir un texte en liste d'identifiants entiers."""
+        """Normalize and convert one text string into integer IDs."""
         return self._tokenizer.encode(text, add_special_tokens=add_special_tokens).ids
 
     # Convert many text strings into token ID sequences.
     def encode_batch(
         self, texts: list[str], add_special_tokens: bool = False
     ) -> list[list[int]]:
-        """Encoder plusieurs textes et retourner une liste d'IDs par texte."""
+        """Encode several texts and return one ID list per text."""
         encodings = self._tokenizer.encode_batch(
             texts, add_special_tokens=add_special_tokens
         )
@@ -115,18 +115,18 @@ class Tokenizer:
 
     # Convert text into readable token pieces.
     def tokenize(self, text: str, add_special_tokens: bool = False) -> list[str]:
-        """Retourner les morceaux BPE lisibles plutôt que leurs IDs."""
+        """Return readable BPE pieces instead of their IDs."""
         return self._tokenizer.encode(
             text, add_special_tokens=add_special_tokens
         ).tokens
 
     # Convert token IDs back into text.
     def decode(self, ids: list[int], skip_special_tokens: bool = True) -> str:
-        """Reconstruire du texte depuis des IDs, en masquant les contrôles par défaut."""
+        """Rebuild text from IDs, hiding control tokens by default."""
         return self._tokenizer.decode(ids, skip_special_tokens=skip_special_tokens)
 
     # Return the number of tokens known by the tokenizer.
     @property
     def vocab_size(self) -> int:
-        """Nombre total de tokens que le modèle peut prédire."""
+        """Total number of tokens the model can predict."""
         return self._tokenizer.get_vocab_size()
