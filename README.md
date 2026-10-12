@@ -271,6 +271,15 @@ Important folders include their own dedicated `README.md` files:
 | Wikipedia collection | [`scripts/wiki_data_collecting/README.md`](scripts/wiki_data_collecting/README.md) |
 | Tests | [`tests/README.md`](tests/README.md) |
 
+### Study notes and interview preparation
+
+These files summarize the key technical notions and provide interview-style questions and answers.
+
+| Language | Notes | Interview preparation |
+|---|---|---|
+| English | [`docs/en/notes.md`](docs/en/notes.md) | [`docs/en/interview.md`](docs/en/interview.md) |
+| French | [`docs/fr/notes.md`](docs/fr/notes.md) | [`docs/fr/interview.md`](docs/fr/interview.md) |
+
 ---
 
 ## 1. Corpus cleaning and normalization
