@@ -256,11 +256,13 @@ DEFAULT_AR_CATEGORIES = [
 class RateLimiter:
     """Thread-safe token-bucket rate limiter shared across all workers."""
 
+    # Initialize this object with the state it needs later.
     def __init__(self, rps: float) -> None:
         self._interval = 1.0 / max(float(rps), 0.01)
         self._lock = Lock()
         self._next_allowed = 0.0
 
+    # Purpose: wait.
     def wait(self) -> None:
         with self._lock:
             now = time.monotonic()
@@ -270,6 +272,7 @@ class RateLimiter:
                 now = time.monotonic()
             self._next_allowed = now + self._interval
 
+    # Purpose: cooldown.
     def cooldown(self, seconds: float) -> None:
         """Push the next-allowed time forward (used after a 429)."""
         with self._lock:
@@ -289,12 +292,14 @@ LIMITER: RateLimiter = RateLimiter(DEFAULT_RPS)
 _THREAD_LOCAL = threading.local()
 
 
+# Create an HTTP session with retry-friendly headers.
 def make_session() -> requests.Session:
     s = requests.Session()
     s.headers.update({"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"})
     return s
 
 
+# Return a per-thread HTTP session for parallel requests.
 def thread_session() -> requests.Session:
     """Return a per-thread :class:`requests.Session` to reuse TCP connections."""
     s = getattr(_THREAD_LOCAL, "session", None)
@@ -304,6 +309,7 @@ def thread_session() -> requests.Session:
     return s
 
 
+# Call the Wikipedia API with retries and rate limiting.
 def api_get(
     session: requests.Session,
     url: str,
@@ -387,6 +393,7 @@ def api_get(
     return None
 
 
+# Fetch a Wikipedia REST summary for one page title.
 def rest_summary(
     session: requests.Session,
     title: str,
@@ -439,6 +446,7 @@ def rest_summary(
     return None
 
 
+# Fetch page extracts for a batch of Wikipedia titles.
 def fetch_extracts_batch(
     titles: list[str],
     wiki_api: str = EN_API,
@@ -513,6 +521,7 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
+# Trim long text at a natural boundary when possible.
 def truncate_at(text: str, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
@@ -526,6 +535,7 @@ def truncate_at(text: str, max_chars: int) -> str:
     return candidate.rstrip()
 
 
+# Convert a Wikipedia title into a canonical article URL.
 def title_to_url(title: str, lang: str = "en") -> str:
     return (
         f"https://{lang}.wikipedia.org/wiki/"
@@ -533,6 +543,7 @@ def title_to_url(title: str, lang: str = "en") -> str:
     )
 
 
+# Extract a Wikipedia title from an article URL.
 def url_to_title(url: str) -> str:
     m = re.search(r"/wiki/(.+)$", url)
     if not m:
@@ -540,6 +551,7 @@ def url_to_title(url: str) -> str:
     return urllib.parse.unquote(m.group(1)).replace("_", " ")
 
 
+# Extract the language code from a Wikipedia URL.
 def url_lang(url: str) -> str:
     """Return ``"ar"`` for Arabic Wikipedia URLs, otherwise ``"en"``."""
     m = re.match(r"https?://([a-z\-]+)\.wikipedia\.org/", url or "")
@@ -548,6 +560,7 @@ def url_lang(url: str) -> str:
     return "en"
 
 
+# Normalize a Wikipedia URL for stable deduplication.
 def normalize_url(url: str) -> str:
     """
     Normalize a Wikipedia URL for deduplication:
@@ -574,6 +587,7 @@ def normalize_url(url: str) -> str:
     return urllib.parse.urlunsplit((scheme, netloc, path.rstrip("/"), "", ""))
 
 
+# Return whether a title belongs to the main article namespace.
 def is_main_namespace(
     title: str,
     noise_prefixes: tuple = _NS_PREFIXES,
@@ -616,6 +630,7 @@ def load_existing_urls(path: Path) -> set[str]:
     return urls
 
 
+# Build one normalized dataset record from collected fields.
 def make_record(
     *,
     text: str,
@@ -650,6 +665,7 @@ class JsonlWriter:
     the in-flight record.
     """
 
+    # Initialize this object with the state it needs later.
     def __init__(self, path: Path, existing_urls: set[str]) -> None:
         self._path = path
         self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -658,6 +674,7 @@ class JsonlWriter:
         self._count = 0
         self._fh = open(self._path, "a", encoding="utf-8")
 
+    # Append one record if it has not already been written.
     def write(self, record: dict) -> bool:
         """Append *record*; return True if written, False if a duplicate."""
         url = normalize_url(record.get("url", ""))
@@ -671,22 +688,26 @@ class JsonlWriter:
             self._count += 1
             return True
 
+    # Return the set of URLs already handled by this writer.
     @property
     def seen_urls(self) -> set[str]:
         """Return a *copy* of the seen-URL set (thread-safe)."""
         with self._lock:
             return set(self._seen)
 
+    # Return how many records were written in this run.
     @property
     def count(self) -> int:
         with self._lock:
             return self._count
 
+    # Close the output file handle.
     def close(self) -> None:
         with self._lock:
             if self._fh and not self._fh.closed:
                 self._fh.close()
 
+    # Best-effort cleanup when the object is garbage collected.
     def __del__(self) -> None:
         try:
             self.close()
@@ -764,6 +785,7 @@ def run_figures_source(
     written_b = 0
     failed_b  = 0
 
+    # Fetch and convert one candidate article into a dataset record.
     def _fetch_one(fig: dict) -> Optional[dict]:
         url  = fig.get("url", "")
         lang = url_lang(url)
@@ -846,6 +868,7 @@ def _fetch_category_members(
     return members
 
 
+# Walk Wikipedia categories breadth-first up to a depth limit.
 def _iter_walk_categories(
     seed_categories: list[str],
     max_depth: int,
@@ -870,9 +893,11 @@ def _iter_walk_categories(
     """
     visited_cats: set[str] = set()
 
+    # Normalize a category title for comparison.
     def _norm_cat(c: str) -> str:
         return c if c.startswith(cat_ns_prefix) else f"{cat_ns_prefix}{c}"
 
+    # Return whether a category should be skipped.
     def _excluded(cat_title: str) -> bool:
         if exclude_cat_re is None:
             return False
@@ -938,6 +963,7 @@ def _iter_walk_categories(
         current_level = next_level
 
 
+# Collect articles by walking configured Wikipedia categories.
 def run_category_source(
     seed_categories: list[str],
     max_depth: int,
@@ -989,6 +1015,7 @@ def run_category_source(
         workers=workers,
     )
 
+    # Fetch and write one batch of candidate article records.
     def _fetch_batch(
         batch: list[dict],
     ) -> tuple[list[dict], int, int]:
@@ -1425,6 +1452,7 @@ def main() -> None:
                 # writes through p2_writer for EN and p2_ar_writer for AR.
                 # We implement that with a small dispatching wrapper.
                 class _Dispatch:
+                    # Append one record if it has not already been written.
                     @staticmethod
                     def write(rec: dict) -> bool:
                         if rec.get("language") == "ar":

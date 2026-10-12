@@ -61,6 +61,7 @@ def build_normalizer():
 
 _NORMALIZER = build_normalizer()
 
+# Apply lightweight text normalization to one string.
 def normalize_text(text):
     """
     Lightweight normalization for a single string.
@@ -109,6 +110,7 @@ _CATEGORY_LINE_RE = re.compile(r"(?m)^[ \t]*(?:تصنيف|بوابة|Category|Po
 MIN_SECTION_WORDS = 8
 
 
+# Normalize section titles before comparing or filtering them.
 def _norm_title(title):
     """Normalize a heading for blocklist comparison (AR + EN aware)."""
     t = title.strip().lower()
@@ -118,6 +120,7 @@ def _norm_title(title):
               .replace("ى", "ي").replace("ة", "ه"))
     return re.sub(r"\s+", " ", t).strip()
 
+# Split a document into titled sections for cleaning.
 def split_into_sections(text):
     """
     Split an article chunk into (title, body) sections.
@@ -141,6 +144,7 @@ def split_into_sections(text):
     sections.append((title, "\n".join(body_lines)))
     return sections
 
+# Remove repeated neighboring lines from a text block.
 def _dedupe_consecutive_lines(text):
     """Remove immediately-repeated lines (raw chunks duplicate titles/headers)."""
     out, prev = [], None
@@ -152,6 +156,7 @@ def _dedupe_consecutive_lines(text):
         prev = stripped
     return "\n".join(out)
 
+# Clean one raw document before tokenizer or packing steps.
 def prepare_document(text, min_section_words=MIN_SECTION_WORDS):
     """
     TYPE A: full one-time cleanup of a single raw article chunk.
@@ -189,6 +194,7 @@ def prepare_document(text, min_section_words=MIN_SECTION_WORDS):
 
     return cleaned_text.strip()
 
+# Clean and filter a dataframe of text documents.
 def clean_dataframe(df, text_col="text", min_chars=40):
 
     new_df = df.copy()

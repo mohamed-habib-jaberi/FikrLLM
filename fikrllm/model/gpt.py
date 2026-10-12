@@ -29,6 +29,7 @@ class GPT(nn.Module):
     Pass `targets` to also get the next-token loss.
     """
 
+    # Initialize this object with the state it needs later.
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         self.config = config
@@ -49,6 +50,7 @@ class GPT(nn.Module):
         self._scale_residual_projections()
 
 
+    # Initialize supported module weights.
     def _init_weights(self, module: nn.Module) -> None:
         """GPT-2's initialisation: normal(0, 0.02), zeroed biases.
 
@@ -65,6 +67,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
+    # Scale residual projection weights for stable deep training.
     def _scale_residual_projections(self) -> None:
         """Shrink the two projections that write into the residual stream.
 
@@ -80,6 +83,7 @@ class GPT(nn.Module):
                 block.attn.W_o.weight.div_(scale)
                 block.ffn.fc2.weight.div_(scale)
 
+    # Run the module forward pass.
     def forward(
         self,
         input_ids: Tensor,
@@ -120,6 +124,7 @@ class GPT(nn.Module):
 
         return logits, loss, updated_caches
     
+    # Count model parameters, optionally excluding token embeddings.
     def num_parameters(self, non_embedding: bool = False) -> int:
         """Total trainable parameters.
 

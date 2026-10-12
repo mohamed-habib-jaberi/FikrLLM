@@ -16,6 +16,7 @@ from fikrllm.config import ModelConfig
 
 class PackedDataset(Dataset):
 
+    # Initialize this object with the state it needs later.
     def __init__(self, path: str | Path, config: ModelConfig) -> None:
 
         self.path = Path(path)
@@ -37,6 +38,7 @@ class PackedDataset(Dataset):
                 f"{self.window} needed for a single window."
             )
 
+    # Purpose: from meta.
     @classmethod
     def from_meta(
         cls, path: str | Path, config: ModelConfig
@@ -51,13 +53,16 @@ class PackedDataset(Dataset):
 
         return dataset
 
+    # Purpose: num tokens.
     @property
     def num_tokens(self) -> int:
         return len(self.tokens)
 
+    # Return the number of examples/items exposed by this object.
     def __len__(self) -> int:
         return self.num_windows
 
+    # Return one example/item by index.
     def __getitem__(self, index: int) -> dict[str, Tensor]:
         start = index * self.window
         window = self.tokens[start : start + self.window]

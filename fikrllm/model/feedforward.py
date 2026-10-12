@@ -16,6 +16,7 @@ class FeedForward(nn.Module):
     ``d_model`` so it can be added to the residual stream.
     """
 
+    # Initialize this object with the state it needs later.
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
         d_ff = config.d_ff
@@ -26,6 +27,7 @@ class FeedForward(nn.Module):
         self.act = nn.GELU(approximate="tanh")
         self.fc2 = nn.Linear(d_ff, config.d_model)
 
+    # Run the module forward pass.
     def forward(self, x: Tensor) -> Tensor:
         """Transform a tensor shaped ``(batch, sequence, d_model)``."""
         x = self.fc1(x)

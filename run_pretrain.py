@@ -35,6 +35,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 REPO_ROOT = Path(__file__).resolve().parent
 PACKED_DIR = REPO_ROOT / "scripts" / "ch03-build-tokenizer" / "output"
 
+# Create a PyTorch DataLoader with the project collate function.
 def _make_loader(
     dataset: Dataset,
     training_config: TrainingConfig,
@@ -58,6 +59,7 @@ def _make_loader(
         )
     )
 
+# Open a packed binary token file as a training dataset.
 def _load_packed(
     path: str | Path,
     model_config: ModelConfig,
@@ -76,6 +78,7 @@ def _load_packed(
 
     return dataset
 
+# Print decoded random windows to inspect packed data quality.
 def log_packing_samples(
     dataset: Dataset,
     tokenizer: Tokenizer,
@@ -96,6 +99,7 @@ def log_packing_samples(
         print(f"       text: {decoded[:120]}...")
 
 
+# Parse command-line arguments and run the script workflow.
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
 

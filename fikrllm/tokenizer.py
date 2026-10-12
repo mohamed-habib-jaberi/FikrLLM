@@ -56,10 +56,12 @@ class Tokenizer:
         "[ASST]": ASST,
     }
 
+    # Initialize this object with the state it needs later.
     def __init__(self, backing_tokenizer: BackingTokenizer) -> None:
         """Conserver le tokenizer Hugging Face qui réalise le vrai travail."""
         self._tokenizer = backing_tokenizer
 
+    # Purpose: from file.
     @classmethod
     def from_file(
         cls, path: str | Path = DEFAULT_TOKENIZER_PATH
@@ -90,14 +92,17 @@ class Tokenizer:
 
         return cls(backing_tokenizer)
 
+    # Normalize text with the tokenizer backend rules.
     def normalize(self, text: str) -> str:
         """Appliquer uniquement les règles de normalisation du tokenizer."""
         return self._tokenizer.normalizer.normalize_str(text)
 
+    # Convert one text string into token IDs.
     def encode(self, text: str, add_special_tokens: bool = False) -> list[int]:
         """Normaliser et convertir un texte en liste d'identifiants entiers."""
         return self._tokenizer.encode(text, add_special_tokens=add_special_tokens).ids
 
+    # Convert many text strings into token ID sequences.
     def encode_batch(
         self, texts: list[str], add_special_tokens: bool = False
     ) -> list[list[int]]:
@@ -108,16 +113,19 @@ class Tokenizer:
 
         return [encoding.ids for encoding in encodings]
 
+    # Convert text into readable token pieces.
     def tokenize(self, text: str, add_special_tokens: bool = False) -> list[str]:
         """Retourner les morceaux BPE lisibles plutôt que leurs IDs."""
         return self._tokenizer.encode(
             text, add_special_tokens=add_special_tokens
         ).tokens
 
+    # Convert token IDs back into text.
     def decode(self, ids: list[int], skip_special_tokens: bool = True) -> str:
         """Reconstruire du texte depuis des IDs, en masquant les contrôles par défaut."""
         return self._tokenizer.decode(ids, skip_special_tokens=skip_special_tokens)
 
+    # Return the number of tokens known by the tokenizer.
     @property
     def vocab_size(self) -> int:
         """Nombre total de tokens que le modèle peut prédire."""

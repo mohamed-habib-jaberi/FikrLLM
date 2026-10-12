@@ -14,6 +14,7 @@ class Tracker:
     """Logs metrics to Trackio, or to nothing at all.
     """
 
+    # Initialize this object with the state it needs later.
     def __init__(
         self,
         training_config: TrainingConfig,
@@ -45,9 +46,11 @@ class Tracker:
 
         print(f"  open the dashboard:  trackio show --project {self.project}")
 
+    # Purpose: log.
     def log(self, metrics: dict[str, float], step: int) -> None:
         trackio.log(metrics, step=step)
 
+    # Purpose: log table.
     def log_table(
         self,
         name: str,
@@ -66,12 +69,15 @@ class Tracker:
             name: table
         }, step=step)
 
+    # Purpose: finish.
     def finish(self) -> None:
         trackio.finish()
 
+    # Enter the context manager and return the active object.
     def __enter__(self) -> "Tracker":
         return self
 
+    # Leave the context manager and release any open resources.
     def __exit__(self, *exception: object) -> bool:
         self.finish()
         return False

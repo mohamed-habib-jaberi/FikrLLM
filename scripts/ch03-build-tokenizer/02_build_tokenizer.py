@@ -54,6 +54,7 @@ def corpus_iterator(df, batch_size=1000):
     for i in range(0, len(texts), batch_size):
         yield texts[i: i + batch_size]
 
+# Run the full training loop.
 def train(tokenizer, df):
     trainer = trainers.BpeTrainer(
         vocab_size=VOCAB_SIZE,

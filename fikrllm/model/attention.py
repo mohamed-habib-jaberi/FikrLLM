@@ -25,6 +25,7 @@ class MultiHeadAttention(nn.Module):
     Output: (B, seq_length, d_model)
     """
 
+    # Initialize this object with the state it needs later.
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
 
@@ -43,6 +44,7 @@ class MultiHeadAttention(nn.Module):
 
         self.register_buffer("mask", mask, persistent=False)
 
+    # Run the module forward pass.
     def forward(
         self,
         x: Tensor,

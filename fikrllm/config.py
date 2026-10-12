@@ -42,6 +42,7 @@ class ModelConfig:
 
     tie_weights: bool = True  # Partage embedding d'entrée et projection de sortie.
 
+    # Purpose: post init.
     def __post_init__(self) -> None:
         """Compléter les valeurs dérivées et refuser les formes impossibles."""
         if self.d_ff is None:
@@ -52,16 +53,19 @@ class ModelConfig:
                 f"d_model={self.d_model} is not divisible by n_heads={self.n_heads}"
             )
 
+    # Purpose: d k.
     @property
     def d_k(self) -> int:
         """Largeur des vecteurs Query, Key et Value d'une seule tête."""
         return self.d_model // self.n_heads
 
+    # Purpose: fikrllm.
     @classmethod
     def fikrllm(cls) -> "ModelConfig":
         """Configuration principale du projet : 8 blocs de largeur 512."""
         return cls(d_model=512, n_heads=8, n_layers=8, dropout=0.05)
 
+    # Purpose: tiny.
     @classmethod
     def tiny(cls) -> "ModelConfig":
         """Petit modèle destiné aux tests rapides et aux machines sans GPU."""
@@ -85,6 +89,7 @@ class GenerationConfig:
     use_cache: bool = True  # Réutilise les Key/Value des tokens précédents.
     seed: int | None = None  # Rend l'échantillonnage reproductible.
 
+    # Choose the highest-scoring token from model logits.
     @classmethod
     def greedy(cls) -> "GenerationConfig":
         """Toujours sélectionner le token le plus probable."""
@@ -146,12 +151,14 @@ class TrainingConfig:
     )
 
 
+# Build a readable run name with a timestamp suffix.
 def unique_run_name(base: str) -> str:
     """Créer un nom de run lisible et suffisamment unique pour TrackIO."""
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     return f"run-{random.randint(0, 9999):04d}-{base}-{stamp}"
 
 
+# Convert a requested number of epochs into optimizer steps.
 def steps_for_epochs(
     num_examples: int,
     batch_size: int,

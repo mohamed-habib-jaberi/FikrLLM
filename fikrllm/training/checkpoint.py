@@ -11,6 +11,7 @@ from fikrllm.config import ModelConfig
 from fikrllm.model.gpt import GPT
 
 
+# Save model state and training metadata to disk.
 def save_checkpoint(
     path: str | Path,
     model: GPT,
@@ -43,6 +44,7 @@ def save_checkpoint(
     
 
 
+# Load saved model and optional optimizer state from disk.
 def load_checkpoint(
     path: str | Path,
     model: GPT,
@@ -76,6 +78,7 @@ def load_checkpoint(
     return checkpoint["step"]
 
 
+# Reconstruct the model configuration saved in a checkpoint.
 def model_config_from_checkpoint(
     path: str | Path, map_location: str | torch.device = "cpu"
 ) -> ModelConfig:

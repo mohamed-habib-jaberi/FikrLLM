@@ -15,6 +15,7 @@ from fikrllm.model.gpt import GPT
 from fikrllm.tokenizer import Tokenizer
 
 
+# Generate token IDs autoregressively from a prompt.
 @torch.no_grad()
 def generate_ids(
     model: GPT,

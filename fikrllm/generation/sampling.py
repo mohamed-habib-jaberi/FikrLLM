@@ -14,12 +14,14 @@ from torch import Tensor
 from fikrllm.config import GenerationConfig
 
 
+# Choose the highest-scoring token from model logits.
 def greedy(logits: Tensor) -> int:
     """Always the likeliest token.
     """
 
     return int(torch.argmax(logits).item())
 
+# Scale logits to control how random sampling will be.
 def apply_temperature(logits: Tensor, temperature: float) -> Tensor:
     """Divide the logits. Below 1 sharpens, above 1 flattens.
 
@@ -33,6 +35,7 @@ def apply_temperature(logits: Tensor, temperature: float) -> Tensor:
 
     return logits / temperature
 
+# Keep only the k highest-scoring token candidates.
 def top_k_filter(logits: Tensor, k: int | None) -> Tensor:
     """Keep the k likeliest tokens, discard the rest.
 
@@ -57,6 +60,7 @@ def top_k_filter(logits: Tensor, k: int | None) -> Tensor:
 
     return logits.masked_fill(logits < kth_best, float("-inf"))
 
+# Keep the smallest candidate set whose probability mass reaches p.
 def top_p_filter(logits: Tensor, p: float | None) -> Tensor:
     """Keep the likeliest tokens whose probabilities sum to p (nucleus).
     """
@@ -100,6 +104,7 @@ def top_p_filter(logits: Tensor, p: float | None) -> Tensor:
 
     return torch.empty_like(logits).scatter_(-1, indices, filtered)
 
+# Select the next token according to the generation settings.
 def sample(
     logits: Tensor,
     config: GenerationConfig,

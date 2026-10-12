@@ -147,6 +147,7 @@ _SCHEMA_DEFAULTS: dict = {
 }
 
 
+# Convert a value to a clean string, preserving empty values as empty text.
 def _to_str(v) -> str:
     """Coerce a value to str, replacing None / -1 / missing with ""."""
     if v is None:
@@ -155,6 +156,7 @@ def _to_str(v) -> str:
     return "" if s == "-1" else s
 
 
+# Convert a value to int, falling back to a default on failure.
 def _to_int(v, default: int = -1) -> int:
     """Coerce a value to int, returning *default* on failure."""
     if v is None:
@@ -165,6 +167,7 @@ def _to_int(v, default: int = -1) -> int:
         return default
 
 
+# Normalize one raw record into the shared dataset schema.
 def normalise(record: dict) -> dict:
     """Return a new dict containing exactly the unified schema fields."""
     out = dict(_SCHEMA_DEFAULTS)
@@ -187,11 +190,13 @@ def normalise(record: dict) -> dict:
 _MULTI_BLANK_RE = re.compile(r"\n{3,}")
 
 
+# Normalize whitespace and remove simple text noise.
 def clean_text(text: str) -> str:
     """Collapse excessive blank lines."""
     return _MULTI_BLANK_RE.sub("\n\n", text).strip()
 
 
+# Trim long text at a natural boundary when possible.
 def truncate_at(text: str, max_chars: int) -> str:
     """
     Truncate *text* to at most *max_chars* characters, preferring a clean
@@ -213,6 +218,7 @@ def truncate_at(text: str, max_chars: int) -> str:
     return candidate.rstrip()
 
 
+# Detect pages that should not become training data.
 def is_noise_page(title: str) -> bool:
     """Return True for Wikipedia meta-namespace pages (templates, portals …)."""
     if not title:
@@ -223,6 +229,7 @@ def is_noise_page(title: str) -> bool:
     return False
 
 
+# Detect low-value stub-like records from their category label.
 def is_stub(category: str) -> bool:
     """Return True when the category marks this as a stub article (بذرة)."""
     return bool(category and "بذرة" in category)
@@ -295,6 +302,7 @@ def process_ar_phase1(
     return out, stats
 
 
+# Convert Arabic phase-2 records into normalized training rows.
 def process_ar_phase2(hf_split) -> tuple[list[dict], dict]:
     """
     Normalise the HF ``train_phase_2`` Arabic split (already clean).
@@ -318,6 +326,7 @@ def process_ar_phase2(hf_split) -> tuple[list[dict], dict]:
     return out, {"input": len(hf_split), "kept": len(out)}
 
 
+# Convert Arabic fine-tuning records into normalized QA rows.
 def process_ar_finetune(hf_split) -> tuple[list[dict], dict]:
     """
     Normalise the HF ``finetune_qa`` Arabic split (already clean).
@@ -341,6 +350,7 @@ def process_ar_finetune(hf_split) -> tuple[list[dict], dict]:
     return out, {"input": len(hf_split), "kept": len(out)}
 
 
+# Read newline-delimited JSON records from disk.
 def load_jsonl(path: Path) -> list[dict]:
     records = []
     with open(path, encoding="utf-8") as fh:
@@ -356,6 +366,7 @@ def load_jsonl(path: Path) -> list[dict]:
     return records
 
 
+# Convert English phase-1 JSONL records into normalized rows.
 def process_en_phase1(path: Path) -> tuple[list[dict], dict]:
     """
     Normalise the English phase_1 JSONL (already filtered by step05).
@@ -380,6 +391,7 @@ def process_en_phase1(path: Path) -> tuple[list[dict], dict]:
     return out, {"input": len(raw), "kept": len(out)}
 
 
+# Convert English phase-2 JSONL records into normalized rows.
 def process_en_phase2(path: Path) -> tuple[list[dict], dict]:
     """
     Normalise the English phase_2 JSONL and fix the ar_url / ar_title bug.
@@ -421,6 +433,7 @@ def process_en_phase2(path: Path) -> tuple[list[dict], dict]:
     return out, {"input": len(raw), "kept": len(out), "ar_url_bug_fixed": bug_fixed}
 
 
+# Convert English fine-tuning JSONL records into normalized QA rows.
 def process_en_finetune(path: Path) -> tuple[list[dict], dict]:
     """
     Normalise the English finetune JSONL (already clean from step06).
@@ -445,6 +458,7 @@ def process_en_finetune(path: Path) -> tuple[list[dict], dict]:
     return out, {"input": len(raw), "kept": len(out)}
 
 
+# Convert augmented JSONL records for the requested phase.
 def process_aug_jsonl(path: Path, phase: str) -> tuple[list[dict], dict]:
     """
     Process an augmentation JSONL file produced by step07 (any language).
@@ -486,6 +500,7 @@ def write_jsonl(records: list[dict], path: Path) -> None:
             fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
+# Print a compact summary of processing counters.
 def print_stats(label: str, stats: dict) -> None:
     kept = stats.get("kept", "?")
     total = stats.get("input", "?")
@@ -800,6 +815,7 @@ def main() -> None:
         "ar_title":         Value("string"),
     })
 
+    # Convert normalized dictionaries into a Hugging Face Dataset.
     def records_to_dataset(records: list[dict]) -> Dataset:
         columns: dict[str, list] = {f: [] for f in _SCHEMA_FIELDS}
         for rec in records:

@@ -35,6 +35,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 TOKENIZER_CORPUS = OUT_DIR / "tokenizer_corpus.parquet"
 
+# Build Hugging Face filename patterns for the requested shards.
 def shard_patterns(max_shards: int=None):
     """Build the list of Hugging Face file patterns to download."""
 
@@ -49,6 +50,7 @@ def shard_patterns(max_shards: int=None):
 
     return train_pattern + eval_pattern
 
+# Download the requested pretrain and fine-tune dataset files.
 def download_pretrain(max_shards: int=None):
     """Download the pretrain shards we need, and return where they landed."""
     print("STEP 1: DOWNLOAD THE PRETRAIN SHARDS")
@@ -66,6 +68,7 @@ def download_pretrain(max_shards: int=None):
 
     return Path(root), pretrain_train_shards, pretrain_eval_shards
 
+# Sample and clean documents used to train the tokenizer.
 def build_tokenizer_corpus(train_shards, target_docs : int):
     """Sample evenly across shards and write the tokenizer's training text."""
 
@@ -96,6 +99,7 @@ def build_tokenizer_corpus(train_shards, target_docs : int):
     corpus.to_parquet(TOKENIZER_CORPUS, index=False)
     return corpus
 
+# Write local fine-tuning train and evaluation Parquet files.
 def write_finetune_splits(root):
     """Copy the fine-tuning splits from the HF snapshot to the output folder."""
 
@@ -105,6 +109,7 @@ def write_finetune_splits(root):
         out = OUT_DIR / f"{name}_filtered.parquet"
         frame.to_parquet(out, index=False)
 
+# Print sample text normalization outputs for quick inspection.
 def demo_normalizer():
     """Print normalization examples for Arabic and English input text."""
 
@@ -123,6 +128,7 @@ def demo_normalizer():
         print(f"  normalized: {normalize_text(sample)}")
         print("="*30)
 
+# Parse command-line arguments and run the script workflow.
 def main(argv=None):
     """Parse command-line options and build all required local corpus files."""
 

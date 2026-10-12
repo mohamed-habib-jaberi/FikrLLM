@@ -21,6 +21,7 @@ ATTENTION_PROJECTIONS = ("W_q", "W_k", "W_v", "W_o")
 
 class LoRALinear(nn.Module):
 
+    # Initialize this object with the state it needs later.
     def __init__(self, base: nn.Linear, r: int, alpha: int = 16) -> None:
         super().__init__()
         self.base = base
@@ -44,10 +45,12 @@ class LoRALinear(nn.Module):
         # What is a=5**0.5? --> It's a number, √5 ≈ 2.236 to adjust the formula
         nn.init.kaiming_uniform_(self.A, a=5**0.5)
 
+    # Run the module forward pass.
     def forward(self, x: Tensor) -> Tensor:
         detour = (x @ self.A.T) @ self.B.T
         return self.base(x) + self.scale * detour
 
+    # Return the base linear weight plus the LoRA update.
     def merged_weight(self) -> Tensor:
         """The one weight matrix an ordinary nn.Linear would need to behave
         identically to this layer, right now.
@@ -64,6 +67,7 @@ class LoRALinear(nn.Module):
 
         return self.base.weight + self.scale * (self.B @ self.A)
 
+# Replace selected linear layers with trainable LoRA adapters.
 def apply_lora(
     model: GPT,
     r: int = 8,
@@ -88,6 +92,7 @@ def apply_lora(
 
     return replaced
 
+# Fold LoRA adapter weights back into regular linear layers.
 def merge_lora(
     model: GPT,
     target_modules: tuple[str, ...] = ATTENTION_PROJECTIONS,

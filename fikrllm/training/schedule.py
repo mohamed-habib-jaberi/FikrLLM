@@ -9,6 +9,7 @@ import torch
 from fikrllm.config import TrainingConfig
 
 
+# Build a warmup plus cosine learning-rate schedule.
 def cosine_with_warmup(
     optimizer: torch.optim.Optimizer, config: TrainingConfig
 ) -> torch.optim.lr_scheduler.LambdaLR:
@@ -30,6 +31,7 @@ def cosine_with_warmup(
     was built with.
     """
 
+    # Compute the learning-rate multiplier for one step.
     def scale_for_step(step: int) -> float:
         
         # === warmup

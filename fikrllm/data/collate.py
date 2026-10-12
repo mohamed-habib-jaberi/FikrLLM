@@ -6,6 +6,7 @@ import torch
 from torch import Tensor
 
 
+# Pad token chunks into a batch and create next-token targets.
 def collate_fn(
     examples: list[dict[str, Tensor]], pad_id: int = 0
 ) -> dict[str, Tensor]:

@@ -82,6 +82,7 @@ FT_SAMPLE_REFERENCES = (
 )
 
 
+# Create a dataset and DataLoader for model training.
 def build_loader(
     path: str | Path,
     tokenizer: Tokenizer,
@@ -113,6 +114,7 @@ def build_loader(
 
     return dataset, loader
 
+# Parse command-line arguments and run the script workflow.
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
 

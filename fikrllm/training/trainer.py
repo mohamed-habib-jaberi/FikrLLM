@@ -21,6 +21,7 @@ from fikrllm.training.schedule import cosine_with_warmup
 from fikrllm.training.tracking import Tracker
 
 
+# Compute loss while ignoring padding tokens.
 def document_cross_entropy(logits: Tensor, targets: Tensor, pad_id: int) -> Tensor:
     """Next-token loss, averaged once per document rather than once per token.
 
@@ -54,6 +55,7 @@ def document_cross_entropy(logits: Tensor, targets: Tensor, pad_id: int) -> Tens
     
 
 class Trainer:
+    # Initialize this object with the state it needs later.
     def __init__(
         self,
         model: GPT,
@@ -92,6 +94,7 @@ class Trainer:
             max_new_tokens=config.sample_max_new_tokens, seed=config.seed
         )
 
+    # Create the AdamW optimizer for trainable model parameters.
     def _build_optimizer(self) -> torch.optim.AdamW:
         """AdamW, with weight decay on matrices only.
         """
@@ -126,11 +129,13 @@ class Trainer:
     def _to_device(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
         return {key: value.to(self.device) for key, value in batch.items()}
 
+    # Yield batches forever by repeatedly cycling through the DataLoader.
     def _batches(self):
         return itertools.chain.from_iterable(
             itertools.repeat(self.train_loader) # DataLoader
         )
 
+    # Run one optimizer step, including gradient accumulation.
     def train_step(self, batches):
         """One optimizer step, over `accumulation_steps` micro-batches.
 
@@ -173,6 +178,7 @@ class Trainer:
 
         return total_loss, grad_norm
 
+    # Measure average validation loss without updating model weights.
     @torch.no_grad()
     def evaluate(self) -> float | None:
         """Plain, flat mean loss on held-out data.
@@ -200,10 +206,12 @@ class Trainer:
         self.model.train()
         return total / max(1, batches)
 
+    # Send scalar metrics to the configured tracker.
     def _log(self, metrics: dict[str, float]) -> None:
         if self.tracker is not None:
             self.tracker.log(metrics, step=self.step)
 
+    # Write a checkpoint for the current trainer state.
     def save(self, filename: str) -> Path:
         return save_checkpoint(
             f"{self.config.checkpoint_dir}/{filename}",
@@ -213,6 +221,7 @@ class Trainer:
             step=self.step,
         )
 
+    # Run the full training loop.
     def train(self):
         config = self.config
 
@@ -275,6 +284,7 @@ class Trainer:
         print(f"done: {self.step} steps in {elapsed:.1f}s")
         return history
 
+    # Generate sample text during training for qualitative inspection.
     @torch.no_grad()
     def _sample(self):
         """Continue each sample prompt, print it, and log the rows as a table.

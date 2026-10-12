@@ -7,6 +7,7 @@ from fikrllm import GPT, ModelConfig, Tokenizer, apply_lora, merge_lora
 from fikrllm.data.collate import collate_fn
 
 
+# Purpose: test model config derives head and feedforward dimensions.
 def test_model_config_derives_head_and_feedforward_dimensions():
     config = ModelConfig(d_model=32, n_heads=4, n_layers=1, vocab_size=64)
 
@@ -14,11 +15,13 @@ def test_model_config_derives_head_and_feedforward_dimensions():
     assert config.d_ff == 128
 
 
+# Purpose: test model config rejects incompatible head count.
 def test_model_config_rejects_incompatible_head_count():
     with pytest.raises(ValueError, match="not divisible"):
         ModelConfig(d_model=30, n_heads=8)
 
 
+# Purpose: test packaged tokenizer has expected special tokens.
 def test_packaged_tokenizer_has_expected_special_tokens():
     tokenizer_path = files("fikrllm").joinpath("assets/tokenizer.json")
     tokenizer = Tokenizer.from_file(tokenizer_path)
@@ -28,6 +31,7 @@ def test_packaged_tokenizer_has_expected_special_tokens():
     assert tokenizer.normalize("أَحْمَد   على") == "احمد علي"
 
 
+# Purpose: test collate shifts inputs and targets.
 def test_collate_shifts_inputs_and_targets():
     examples = [
         {"input_ids": torch.tensor([2, 10, 11, 3])},
@@ -40,6 +44,7 @@ def test_collate_shifts_inputs_and_targets():
     assert batch["targets"].tolist() == [[10, 11, 3], [12, 3, 0]]
 
 
+# Purpose: test gpt forward shapes and loss.
 def test_gpt_forward_shapes_and_loss():
     config = ModelConfig(
         vocab_size=64,
@@ -60,6 +65,7 @@ def test_gpt_forward_shapes_and_loss():
     assert cache is None
 
 
+# Purpose: test lora merge preserves output.
 def test_lora_merge_preserves_output():
     config = ModelConfig(
         vocab_size=64,

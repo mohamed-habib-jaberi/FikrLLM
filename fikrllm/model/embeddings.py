@@ -11,6 +11,7 @@ from fikrllm.config import ModelConfig
 
 class InputEmbedding(nn.Module):
 
+    # Initialize this object with the state it needs later.
     def __init__(self, config: ModelConfig) -> None:
 
         super().__init__()
@@ -28,6 +29,7 @@ class InputEmbedding(nn.Module):
 
 
 
+    # Run the module forward pass.
     def forward(self, input_ids: Tensor, position_offset: int = 0) -> Tensor:
 
         _, seq_len = input_ids.shape

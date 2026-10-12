@@ -68,6 +68,7 @@ OUT_DIR = Path(__file__).parent / "output"
 DTYPE = np.uint16          # vocab is 32,000, so every ID fits in two bytes
 SHUFFLE_SEED = 1234        # documents are shuffled before packing
 
+# Build Hugging Face filename patterns for the requested shards.
 def shard_patterns(max_shards=None):
     """allow_patterns for snapshot_download: every shard, or just the first N."""
     if max_shards is None:
@@ -76,6 +77,7 @@ def shard_patterns(max_shards=None):
             + ["pretrain/eval-*.parquet"])
 
 
+# Tokenize shards and write them into one packed binary file.
 def pack_split(shards, tokenizer, out_path):
     """Encode every document in `shards` and append them to one flat binary."""
     total_tokens = total_docs = 0
@@ -108,6 +110,7 @@ def pack_split(shards, tokenizer, out_path):
 
     return {"documents": total_docs, "tokens": total_tokens}
 
+# Parse command-line arguments and run the script workflow.
 def main():
     # RawDescription keeps the docstring's diagrams intact in --help; the
     # default formatter reflows them into one unreadable paragraph.

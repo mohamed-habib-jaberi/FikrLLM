@@ -22,6 +22,8 @@ DEFAULT_SYSTEM = {
 # Arabic letters all live in one block of numbers: 0x0600 to 0x06FF.
 ARABIC_LETTERS = range(0x0600, 0x0700)
 
+# Choose the default system prompt language by checking whether the text
+# contains Arabic characters.
 def system_for(text: str) -> str:
     for char in text:
         if ord(char) in ARABIC_LETTERS:
@@ -29,6 +31,7 @@ def system_for(text: str) -> str:
 
     return DEFAULT_SYSTEM["en"]
 
+# Convert one question/answer pair into token IDs and masked training labels.
 def format_chat(
     tokenizer: Tokenizer,
     question: str,
@@ -84,6 +87,8 @@ class ChatDataset(Dataset):
     """Question/answer pairs as masked training examples.
     """
 
+    # Tokenize all question/answer rows and keep only examples that fit the
+    # model context length.
     def __init__(
         self,
         questions: list[str],
@@ -121,6 +126,8 @@ class ChatDataset(Dataset):
                 (inputs, labels)
             )
 
+    # Build a ChatDataset directly from a Parquet file containing question,
+    # answer, and language columns.
     @classmethod
     def from_parquet(
         cls,
@@ -145,9 +152,11 @@ class ChatDataset(Dataset):
             **kwargs
         )
 
+    # Return how many usable chat examples are stored in this dataset.
     def __len__(self) -> int:
         return len(self.examples)
 
+    # Return one tokenized chat example as PyTorch tensors.
     def __getitem__(self, index: int) -> dict[str, Tensor]:
         inputs, labels = self.examples[index]
         return {
@@ -155,6 +164,8 @@ class ChatDataset(Dataset):
             "labels": torch.tensor(labels, dtype=torch.long),
         }
             
+# Pad several chat examples to the same length so the DataLoader can feed one
+# batch to the model.
 def chat_collate_fn(
     examples: list[dict[str, Tensor]], pad_id: int = 0
 ) -> dict[str, Tensor]:

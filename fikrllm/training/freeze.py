@@ -6,6 +6,7 @@ move, rather than moving all of them or adding new ones
 from fikrllm.model.gpt import GPT
 
 
+# Disable gradients for every model parameter.
 def freeze_all(model: GPT) -> None:
     """Set every parameter's requires_grad to False.
 
@@ -21,6 +22,7 @@ def freeze_all(model: GPT) -> None:
         parameter.requires_grad = False
 
 
+# Re-enable gradients for the last transformer blocks and final norm.
 def unfreeze_tail(
     model: GPT, n_blocks: int = 2, unfreeze_lm_head: bool = True
 ) -> None:

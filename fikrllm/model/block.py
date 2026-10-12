@@ -13,6 +13,7 @@ from fikrllm.model.feedforward import FeedForward
 
 class TransformerBlock(nn.Module):
 
+    # Initialize this object with the state it needs later.
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
 
@@ -26,6 +27,7 @@ class TransformerBlock(nn.Module):
 
 
 
+    # Run the module forward pass.
     def forward(
         self,
         x: Tensor,

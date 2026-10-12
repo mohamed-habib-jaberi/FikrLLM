@@ -140,11 +140,13 @@ class RateLimiter:
     cooldown period that all threads honor after a 429.
     """
 
+    # Initialize this object with the state it needs later.
     def __init__(self, min_interval: float):
         self.min_interval = max(0.0, float(min_interval))
         self._lock = Lock()
         self._next_allowed = 0.0
 
+    # Purpose: wait.
     def wait(self):
         with self._lock:
             now = time.monotonic()
@@ -154,6 +156,7 @@ class RateLimiter:
                 now = time.monotonic()
             self._next_allowed = now + self.min_interval
 
+    # Purpose: cool down.
     def cool_down(self, seconds: float):
         """Push the next-allowed timestamp forward for everyone."""
         if seconds <= 0:
@@ -168,6 +171,7 @@ class RateLimiter:
 LIMITER: "RateLimiter" = RateLimiter(0.25)
 
 
+# Call the Wikipedia API with retries and rate limiting.
 def api_get(session: requests.Session,
             url: str,
             params: Dict,
@@ -221,6 +225,7 @@ def api_get(session: requests.Session,
     return None
 
 
+# Purpose: title from url.
 def title_from_url(url: str) -> Optional[str]:
     """Extract the (URL-decoded) page title from a /wiki/<title> URL."""
     if not url:
@@ -231,11 +236,13 @@ def title_from_url(url: str) -> Optional[str]:
     return unquote(m.group(1)).replace("_", " ").strip()
 
 
+# Normalize a Wikipedia URL for stable deduplication.
 def normalize_url(url: str) -> str:
     p = urlparse(url)
     return f"{p.scheme}://{p.netloc}{unquote(p.path).rstrip('/')}"
 
 
+# Purpose: looks like english.
 def looks_like_english(text: str) -> bool:
     """Cheap language check: are most letters ASCII?"""
     letters = [c for c in text if c.isalpha()]
@@ -297,6 +304,7 @@ def resolve_english_titles(session: requests.Session,
     return out
 
 
+# Purpose: fetch en wikitext.
 def fetch_en_wikitext(session: requests.Session,
                       title: str) -> Optional[str]:
     """Fetch the raw wikitext of an English Wikipedia page."""
@@ -338,6 +346,7 @@ _FILE_LINK_RE = re.compile(
 _MULTI_BLANK_RE = re.compile(r"\n{3,}")
 
 
+# Purpose: split into sections.
 def _split_into_sections(wikitext: str) -> List[Tuple[str, str]]:
     """
     Split wikitext into (heading, body) sections. The lead (before the first
@@ -358,6 +367,7 @@ def _split_into_sections(wikitext: str) -> List[Tuple[str, str]]:
     return sections
 
 
+# Purpose: clean english wikitext.
 def clean_english_wikitext(wikitext: str) -> str:
     """
     Convert raw English wikitext to clean plain text suitable for LM
@@ -400,6 +410,7 @@ def clean_english_wikitext(wikitext: str) -> str:
     return text
 
 
+# Purpose: quality ok.
 def quality_ok(text: str) -> Tuple[bool, str]:
     if len(text) < MIN_CHARS:
         return False, "too_short_chars"
@@ -413,6 +424,7 @@ def quality_ok(text: str) -> Tuple[bool, str]:
     return True, "ok"
 
 
+# Purpose: truncate clean.
 def truncate_clean(text: str, max_chars: int = MAX_CHARS) -> str:
     """Truncate at the nearest paragraph boundary <= max_chars."""
     if len(text) <= max_chars:
@@ -488,6 +500,7 @@ def load_phase1_inputs(input_path: Path) -> List[Dict]:
     return rows
 
 
+# Purpose: load phase2 inputs.
 def load_phase2_inputs(input_path: Path) -> List[Dict]:
     """
     Load step03 figures and de-dupe by URL. Returns rows with keys:
@@ -530,6 +543,7 @@ def write_record(out_f, lock: Lock, record: Dict):
         out_f.flush()
 
 
+# Purpose: process phase1.
 def process_phase1(input_path: Path,
                    output_path: Path,
                    workers: int,
@@ -612,6 +626,7 @@ def process_phase1(input_path: Path,
 
     with open(output_path, "a", encoding="utf-8") as out_f:
 
+        # Purpose: job.
         def _job(row_en_title_en_url):
             row, en_title, en_url = row_en_title_en_url
             wt = fetch_en_wikitext(session, en_title)
@@ -653,6 +668,7 @@ def process_phase1(input_path: Path,
     print(f"Saved to: {output_path}")
 
 
+# Purpose: process phase2.
 def process_phase2(input_path: Path,
                    output_path: Path,
                    workers: int,
@@ -675,6 +691,7 @@ def process_phase2(input_path: Path,
 
     with open(output_path, "a", encoding="utf-8") as out_f:
 
+        # Purpose: job.
         def _job(row):
             title = row["en_title"] or title_from_url(row["en_url"])
             if not title:

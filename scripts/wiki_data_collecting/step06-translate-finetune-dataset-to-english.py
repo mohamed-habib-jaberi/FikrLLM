@@ -119,6 +119,7 @@ SENTINEL_RE = re.compile(r"\s*<<<\s*\|?\s*SEGMENT\s*\|?\s*>>>\s*")
 def load_template(template_path: Path = TEMPLATE_PATH):
     env = Environment(undefined=StrictUndefined, keep_trailing_newline=True)
 
+    # Raise a clear template-rendering error.
     def _raise(msg):
         raise RuntimeError(msg)
 
@@ -126,6 +127,7 @@ def load_template(template_path: Path = TEMPLATE_PATH):
     return env.from_string(template_path.read_text(encoding="utf-8"))
 
 
+# Render the translation prompt for one text sample.
 def render_prompt(template, source_lang: str, target_lang: str, text: str) -> str:
     messages = [
         {
@@ -160,6 +162,7 @@ class TranslationClient:
     timeout: int = REQUEST_TIMEOUT
     max_retries: int = MAX_RETRIES
 
+    # Call the translation backend for one prompt.
     def translate(
         self,
         template,
@@ -268,6 +271,7 @@ def _build_bundle(title: str, question: str, answer: str) -> str:
     return f"{title.strip()}{sep}{question.strip()}{sep}{answer.strip()}"
 
 
+# Split a translated bundle back into its fields.
 def _split_translation(out: str) -> Optional[list[str]]:
     """Split *out* on the sentinel; return exactly 3 trimmed pieces or None."""
     parts = [p.strip() for p in SENTINEL_RE.split(out)]
@@ -396,6 +400,7 @@ def parse_args():
     return p.parse_args()
 
 
+# Parse command-line arguments and run the script workflow.
 def main():
     args = parse_args()
 
