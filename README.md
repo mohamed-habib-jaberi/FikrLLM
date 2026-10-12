@@ -27,6 +27,193 @@ corpus brut
 | Génération | `fikrllm/generation/` | continuation / réponse |
 | Fine-tuning | `run_finetune_lora.py`, `data/chat.py`, `model/lora.py` | assistant Q/R |
 
+### Pipeline complet du projet
+
+Ce schéma montre le chemin complet des données, depuis le dataset Hugging Face jusqu'au modèle capable de générer du texte ou de répondre en mode assistant.
+
+Les grandes étapes sont :
+
+1. Données brutes Hugging Face
+2. Nettoyage du corpus
+3. Construction du tokenizer
+4. Packing en fichiers binaires
+5. Dataset et batch
+6. Modèle GPT
+7. Pré-entraînement
+8. Checkpoint
+9. Génération de texte
+10. Fine-tuning LoRA pour mode assistant
+
+```text
+Étape 1 — Données brutes Hugging Face
+Dataset Hugging Face
+bakrianoo/jabarti-llm-dataset
+        │
+        ▼
+Étape 2 — Nettoyage du corpus
+scripts/ch03-build-tokenizer/01_clean_corpus.py
+        │
+        │  Rôle:
+        │  - télécharge les fichiers Parquet
+        │  - nettoie le corpus pour le tokenizer
+        │  - prépare les fichiers de fine-tuning
+        │
+        ▼
+scripts/ch03-build-tokenizer/output/
+        │
+        ├── tokenizer_corpus.parquet
+        ├── ft_train_filtered.parquet
+        └── ft_eval_filtered.parquet
+        │
+        ▼
+Étape 3 — Construction du tokenizer
+scripts/ch03-build-tokenizer/02_build_tokenizer.py
+        │
+        │  Rôle:
+        │  - lit tokenizer_corpus.parquet
+        │  - entraîne le tokenizer BPE
+        │  - sauvegarde tokenizer.json
+        │
+        ▼
+fikrllm/assets/tokenizer.json
+        │
+        ▼
+fikrllm/tokenizer.py
+        │
+        │  Rôle:
+        │  - charge tokenizer.json
+        │  - transforme texte -> token IDs
+        │  - transforme token IDs -> texte
+        │
+        ▼
+Étape 4 — Packing en fichiers binaires
+scripts/ch03-build-tokenizer/03_pack_corpus.py
+        │
+        │  Rôle:
+        │  - reprend les textes du corpus
+        │  - applique le tokenizer
+        │  - transforme les documents en IDs
+        │  - sauvegarde les tokens en format binaire
+        │
+        ▼
+scripts/ch03-build-tokenizer/output/
+        │
+        ├── train.bin
+        ├── eval.bin
+        └── meta.json
+        │
+        ▼
+Étape 5A — Dataset
+fikrllm/data/dataset.py
+        │
+        │  Rôle:
+        │  - lit train.bin / eval.bin
+        │  - crée des fenêtres de tokens
+        │  - garde le gros fichier sur disque avec numpy.memmap
+        │
+        ▼
+Étape 5B — Batch
+fikrllm/data/collate.py
+        │
+        │  Rôle:
+        │  - regroupe plusieurs exemples en batch
+        │  - ajoute le padding si nécessaire
+        │  - crée input_ids et targets
+        │
+        ▼
+Étape 6 — Modèle GPT
+fikrllm/model/
+        │
+        ├── embeddings.py     IDs -> vecteurs
+        ├── attention.py      attention multi-head
+        ├── feedforward.py    MLP du Transformer
+        ├── block.py          bloc Transformer complet
+        ├── gpt.py            modèle GPT complet
+        └── lora.py           adaptation LoRA
+        │
+        ▼
+Étape 7 — Pré-entraînement
+run_pretrain.py
+        │
+        │  Rôle:
+        │  - charge le tokenizer
+        │  - charge le dataset
+        │  - crée le modèle GPT
+        │  - lance le pré-entraînement
+        │
+        ▼
+Modules utilisés pendant l'étape 7
+fikrllm/training/
+        │
+        ├── trainer.py        boucle d'entraînement
+        ├── schedule.py       learning rate schedule
+        ├── checkpoint.py     sauvegarde / chargement du modèle
+        └── tracking.py       logs et métriques
+        │
+        ▼
+Étape 8 — Checkpoint
+checkpoints/
+        │
+        └── modèle entraîné .pt
+        │
+        ▼
+Étape 9 — Génération de texte
+fikrllm/generation/
+        │
+        ├── generate.py       boucle de génération
+        └── sampling.py       temperature, top-k, top-p
+        │
+        ▼
+Texte généré par FikrLLM
+```
+
+Le fine-tuning chat utilise une branche spéciale du même pipeline :
+
+```text
+Étape 10 — Fine-tuning LoRA pour mode assistant
+ft_train_filtered.parquet / ft_eval_filtered.parquet
+        │
+        ▼
+fikrllm/data/chat.py
+        │
+        │  Rôle:
+        │  - transforme question/réponse en format chat
+        │  - ajoute [SYS], [USER], [ASST]
+        │  - masque la question pour entraîner seulement la réponse
+        │
+        ▼
+run_finetune_lora.py
+        │
+        │  Rôle:
+        │  - charge un checkpoint pré-entraîné
+        │  - applique LoRA
+        │  - entraîne le modèle à répondre comme assistant
+        │
+        ▼
+checkpoint fine-tuned
+        │
+        ▼
+generate.py avec chat=True
+        │
+        ▼
+Réponse style assistant
+```
+
+Version courte :
+
+```text
+01_clean_corpus.py     prépare le texte
+02_build_tokenizer.py  apprend le vocabulaire
+03_pack_corpus.py      transforme le texte en tokens binaires
+dataset.py             lit les tokens
+collate.py             prépare les batchs
+model/                 définit GPT
+trainer.py             entraîne GPT
+checkpoint.py          sauvegarde le modèle
+generate.py            utilise le modèle
+chat.py + lora.py      adaptent le modèle au mode assistant
+```
+
 ## Installation
 
 Python 3.10+ est nécessaire.

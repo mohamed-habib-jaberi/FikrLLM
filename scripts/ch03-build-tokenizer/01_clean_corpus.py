@@ -43,7 +43,8 @@ def shard_patterns(max_shards: int=None):
         return ["pretrain/train-*.parquet", "pretrain/eval-*.parquet"]
 
     # Select only the first N training shards but keep every evaluation shard.
-    train_pattern = [ f"pretrain/train-{i:05d}-of-*.parquet" for i in range(max_shards) ]
+    train_pattern = [ f"pretrain/train-{i:05d}-of-*.parquet"
+                     for i in range(max_shards) ]
     eval_pattern = ["pretrain/eval-*.parquet"]
 
     return train_pattern + eval_pattern
@@ -122,7 +123,7 @@ def demo_normalizer():
         print(f"  normalized: {normalize_text(sample)}")
         print("="*30)
 
-def main():
+def main(argv=None):
     """Parse command-line options and build all required local corpus files."""
 
     # Configure optional limits for lightweight or classroom runs.
@@ -134,7 +135,7 @@ def main():
     parser.add_argument("--tokenizer-docs", type=int, default=DEFAULT_TOKENIZER_DOCS,
                         help="documents to sample for tokenizer training")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     # Download the raw files and prepare the fine-tuning splits.
     root, pretrain_train_shards, _ = download_pretrain(args.max_shards)
