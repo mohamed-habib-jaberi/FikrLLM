@@ -101,6 +101,7 @@ def log_packing_samples(
 
 # Parse command-line arguments and run the script workflow.
 def main() -> None:
+    # Define all command-line options used to control the pretraining run.
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument("--resume", type=Path, help="checkpoint to continue from")
@@ -155,11 +156,14 @@ def main() -> None:
     parser.add_argument("--tiny", action="store_true", help="use the CPU-sized model")
 
 
+    # Read the command-line values provided by the user.
     args = parser.parse_args()
 
+    # Choose the model size and create the default training configuration.
     model_config = ModelConfig.tiny() if args.tiny else ModelConfig.fikrllm()
     training_config = TrainingConfig(run_name=unique_run_name("pretrain"))
 
+    # Override default training settings with optional command-line values.
     for name, value in (
         ("warmup_steps", args.warmup),
         ("batch_size", args.batch_size),
@@ -176,35 +180,43 @@ def main() -> None:
         if value is not None:
             setattr(training_config, name, value)
 
+    # Use custom sample prompts during training if the user provided them.
     if args.sample_prompts:
         training_config.sample_prompts = tuple(args.sample_prompts)
 
+    # Load the tokenizer used to encode and decode token IDs.
     print("loading tokenizer")
     tokenizer = Tokenizer.from_file()
 
+    # Load the packed training token file.
     train_dataset = _load_packed(
         args.data_dir / "train.bin",
         model_config,
         limit=args.limit
     )
 
+    # Build the training DataLoader.
     train_loader = _make_loader(
         train_dataset, training_config, model_config,
         use_shuffle=args.shuffle, shuffle_seed=args.shuffle_seed
     )
 
+    # Load the packed evaluation token file.
     eval_dataset = _load_packed(
         args.data_dir / "eval.bin", model_config,
         limit=args.eval_limit
     )
 
+    # Build the evaluation DataLoader without shuffling.
     eval_loader = _make_loader(
         eval_dataset, training_config, model_config,
         use_shuffle=False,
     )
 
+    # Decode a few random samples to quickly inspect the packed data.
     log_packing_samples(train_dataset, tokenizer)
 
+    # Decide how many optimizer steps to run.
     if args.steps is not None:
         training_config.max_steps = args.steps
     else:
@@ -213,21 +225,26 @@ def main() -> None:
             training_config.accumulation_steps, args.epochs
         )
 
+    # Create the GPT model.
     model = GPT(model_config)
 
+    # Print a short summary before training starts.
     print(f"pretrain: {len(train_dataset):,} windows, "
           f"{model.num_parameters():,} parameters")
     print(f"  {args.epochs:g} epoch(s) -> {training_config.max_steps:,} steps, "
           f"effective batch {training_config.batch_size * training_config.accumulation_steps}")
 
+    # Keep the final checkpoint path after training finishes.
     final = None
 
+    # Enable or disable experiment tracking.
     tracker_context = (
         nullcontext(None)
         if args.no_tracking
         else Tracker(training_config=training_config, model_config=model_config)
     )
 
+    # Create the trainer, optionally resume, then run the training loop.
     with tracker_context as tracker:
 
         trainer = Trainer(
@@ -240,6 +257,7 @@ def main() -> None:
             device=args.device
         )
     
+        # Restore model, optimizer, and scheduler state from a checkpoint if requested.
         if args.resume:
             trainer.step = load_checkpoint(
                 args.resume, model, trainer.optimizer, trainer.scheduler
@@ -247,10 +265,13 @@ def main() -> None:
             print(f"resumed {args.resume} at step {trainer.step:,} "
                   f"(optimizer and schedule restored)")
 
+        # Run pretraining.
         trainer.train()
 
+        # Save the final checkpoint.
         final = trainer.save("pretrain_final.pt")
 
+    # Print the final checkpoint path.
     print(f"saved {final}")
 
 if __name__ == "__main__":
