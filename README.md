@@ -231,6 +231,13 @@ python -m pip install -e .
 
 This section keeps the original project run template: start with a small sample run, then move to the full run once the pipeline is verified.
 
+For this project, local execution is mainly used for smoke tests and debugging. Full pretraining and LoRA fine-tuning can be run on a Vast.ai cloud GPU instance to get faster training and more available GPU memory.
+
+```text
+local machine -> small tests, code validation, debugging
+Vast.ai GPU   -> full pretraining, LoRA fine-tuning, longer experiments
+```
+
 ### Run PreTrain
 
 The pretraining script reads `train.bin` and `eval.bin`, trains the GPT model with next-token prediction, logs metrics, and saves checkpoints.
@@ -282,7 +289,7 @@ python run_finetune_lora.py \
   --lr 2e-5 --warmup 100 --lora-r 256 --lora-alpha 512 \
   --print-every 100 --sample-every 500 --shuffle-seed 42 --shuffle \
   --checkpoint-dir /workspace/checkpoints/fikrllm-512x8-lora \
-  --save-every 2000
+  --save-every 1000
 ```
 
 - `--lora-r` controls the rank of the LoRA adapters. Higher values add more capacity and more trainable parameters.
